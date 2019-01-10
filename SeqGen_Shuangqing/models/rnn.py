@@ -7,7 +7,16 @@ import models
 import math
 import numpy as np
 import utils
+from torch.distributions.bernoulli import Bernoulli
+import random
 
+def add_unk(input_token_id, p):
+    #random.random() gives you a value between 0 and 1
+    #to avoid switching your padding to 0 we add 'input_token_id > 1'
+    if random.random() < p and input_token_id > 1:
+        return 0
+    else:
+        return input_token_id
 
 class rnn_encoder(nn.Module):
 
@@ -54,9 +63,16 @@ class rnn_encoder(nn.Module):
             self.rnn = nn.LSTM(input_size=config.emb_size, hidden_size=config.hidden_size,
                                num_layers=config.enc_num_layers, dropout=config.dropout,
                                bidirectional=config.bidirectional)
+            self.dropout = nn.Dropout(config.dropout)
+            self.emb_drop = nn.Dropout(config.emb_dropout)
 
     def forward(self, inputs, lengths):
-        embs = pack(self.embedding(inputs), lengths)
+        #probs = torch.empty(inputs.size(), device='cuda').uniform_(0, 1)
+        #inputs = torch.where(probs < self.config.emb_dropout, inputs, 
+                             #torch.zeros_like(inputs))
+        embs = pack(self.emb_drop(self.embedding(inputs)), lengths)
+        #mask = Bernoulli(1 - self.config.emb_dropout).sample((embs.shape[0],))
+        #embs = pack(embs.transpose(0, 1)[:, mask==1].transpose(0, 1), lengths)
         outputs, state = self.rnn(embs)
         outputs = unpack(outputs)[0]
         if self.config.bidirectional:
@@ -65,6 +81,7 @@ class rnn_encoder(nn.Module):
             else:
                 outputs = outputs[:, :, :self.config.hidden_size] + \
                     outputs[:, :, self.config.hidden_size:]
+                outputs = self.dropout(outputs)
         if self.config.swish:
             outputs = outputs.transpose(0, 1).transpose(1, 2)
             conv1 = self.sw1(outputs)
@@ -128,10 +145,14 @@ class rnn_decoder(nn.Module):
 
         self.hidden_size = config.hidden_size
         self.dropout = nn.Dropout(config.dropout)
+        self.emb_drop = nn.Dropout(config.emb_dropout)
         self.config = config
 
     def forward(self, input, state):
-        embs = self.embedding(input)
+        #probs = torch.empty(input.size(), device='cuda').uniform_(0, 1)
+        #input = torch.where(probs < self.config.emb_dropout, 
+                            #input, torch.zeros_like(input))
+        embs = self.emb_drop(self.embedding(input))
         output, state = self.rnn(embs, state)
         if self.attention is not None:
             if self.config.attention == 'luong_gate':

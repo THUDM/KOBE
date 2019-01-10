@@ -12,8 +12,6 @@ def model_opts(parser):
                         help="Model selection")
     parser.add_argument('--mode', default='train', type=str,
                         help="Mode selection")
-    parser.add_argument('--module', default='seq2seq', type=str,
-                        help="Module selection")
     parser.add_argument('--log', default='', type=str,
                         help="log directory")
     parser.add_argument('--num_processes', type=int, default=4,

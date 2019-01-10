@@ -43,6 +43,7 @@ class luong_gate_attention(nn.Module):
         self.linear_out = nn.Sequential(nn.Linear(2*hidden_size, hidden_size), nn.SELU(), nn.Dropout(p=prob),
                                         nn.Linear(hidden_size, hidden_size), nn.SELU(), nn.Dropout(p=prob))
         self.softmax = nn.Softmax(dim=-1)
+        self.dropout = nn.Dropout(p=prob)
 
     def init_context(self, context):
         self.context = context.transpose(0, 1)
@@ -64,7 +65,7 @@ class luong_gate_attention(nn.Module):
             output = output.transpose(0, 1)
         else:
             gamma_h = self.linear_in(h).unsqueeze(2)
-            weights = torch.bmm(self.context, gamma_h).squeeze(2)
+            weights = self.dropout(torch.bmm(self.context, gamma_h).squeeze(2))
             weights = self.softmax(weights)
             c_t = torch.bmm(weights.unsqueeze(1), self.context).squeeze(1)
             output = self.linear_out(torch.cat([h, c_t], 1))
@@ -119,3 +120,121 @@ class maxout(nn.Module):
         output = output.max(2)[0]
 
         return output
+
+
+class Multihead_Attention(nn.Module):
+
+    def __init__(self, model_dim, head_count=8, dropout=0.1):
+        super(Multihead_Attention, self).__init__()
+
+        self.head_dim = model_dim // head_count
+        self.model_dim = model_dim
+        self.head_count = head_count
+
+        self.linear_keys = nn.Linear(model_dim,
+                                     head_count * self.head_dim)
+        self.linear_values = nn.Linear(model_dim,
+                                       head_count * self.head_dim)
+        self.linear_query = nn.Linear(model_dim,
+                                      head_count * self.head_dim)
+        self.softmax = nn.Softmax(dim=-1)
+        self.dropout = nn.Dropout(dropout)
+        self.final_linear = nn.Linear(model_dim, model_dim)
+
+    def forward(self, key, value, query, mask=None,
+                layer_cache=None, type=None, tau=None):
+        batch_size = key.size(0)
+        head_dim = self.head_dim
+        head_count = self.head_count
+        key_len = key.size(1)
+        query_len = query.size(1)
+
+        def shape(x):
+            """  projection """
+            return x.view(batch_size, -1, head_count, head_dim) \
+                .transpose(1, 2)
+
+        def unshape(x):
+            """  compute context """
+            return x.transpose(1, 2).contiguous() \
+                    .view(batch_size, -1, head_count * head_dim)
+
+        # For transformer decoder.
+        if layer_cache is not None:
+            if type == "self":
+                query, key, value = self.linear_query(query),\
+                    self.linear_keys(query),\
+                    self.linear_values(query)
+                key = shape(key)
+                value = shape(value)
+                if layer_cache is not None:
+                    if layer_cache["self_keys"] is not None:
+                        key = torch.cat(
+                            (layer_cache["self_keys"], key),
+                            dim=2)
+                    if layer_cache["self_values"] is not None:
+                        value = torch.cat(
+                            (layer_cache["self_values"], value),
+                            dim=2)
+                    layer_cache["self_keys"] = key
+                    layer_cache["self_values"] = value
+            elif type == "context":
+                query = self.linear_query(query)
+                if layer_cache is not None:
+                    if layer_cache["memory_keys"] is None:
+                        key, value = self.linear_keys(key),\
+                            self.linear_values(value)
+                        key = shape(key)
+                        value = shape(value)
+                    else:
+                        key, value = layer_cache["memory_keys"],\
+                            layer_cache["memory_values"]
+                    layer_cache["memory_keys"] = key
+                    layer_cache["memory_values"] = value
+                else:
+                    key, value = self.linear_keys(key),\
+                        self.linear_values(value)
+                    key = shape(key)
+                    value = shape(value)
+        else:
+            query, key, value = self.linear_query(query),\
+                self.linear_keys(key),\
+                self.linear_values(value)
+            key = shape(key)
+            value = shape(value)
+
+        query = shape(query)
+
+        key_len = key.size(2)
+        query_len = query.size(2)
+
+        if tau is not None:
+            tau = tau.view(batch_size, -1, head_count,
+                           1).transpose(1, 2)
+            tau_len = tau.size(2)
+            assert query_len == tau_len
+            query = query / (head_dim**tau)
+        else:
+            query = query / math.sqrt(head_dim)
+
+        scores = torch.matmul(query, key.transpose(2, 3))
+
+        if mask is not None:
+            mask = mask.unsqueeze(1).expand_as(scores)
+            if tau is not None:
+                scores = scores.masked_fill(mask, -1e10)
+            else:
+                scores = scores.masked_fill(mask, -1e18)
+
+        attn = self.softmax(scores)
+        drop_attn = self.dropout(attn)
+        context = unshape(torch.matmul(drop_attn, value))
+
+        output = self.final_linear(context)
+
+        top_attn = attn \
+            .view(batch_size, head_count,
+                  query_len, key_len)[:, 0, :, :] \
+            .contiguous()
+
+        return output, top_attn
