@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
-
 import models
 import utils
 from models import rnn
@@ -154,12 +153,13 @@ class TransformerEncoder(nn.Module):
         self.config = config
         self.num_layers = config.enc_num_layers
 
-        self.embedding = nn.Embedding(config.src_vocab_size, config.emb_size,
+        # HACK: 512 for word embeddings, 512 for condition embeddings
+        self.embedding = nn.Embedding(config.src_vocab_size, config.emb_size // 2,
                                       padding_idx=padding_idx)
         # positional encoding
         if config.positional:
             self.position_embedding = PositionalEncoding(
-                config.dropout, config.emb_size)
+                config.dropout, config.emb_size // 2)
         else:
             # RNN for positional information, waiting to be deprecated
             self.rnn = nn.LSTM(input_size=config.emb_size, hidden_size=config.hidden_size,
