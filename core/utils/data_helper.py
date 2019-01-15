@@ -1,6 +1,8 @@
+import pickle as pkl
 import linecache
 from random import Random
 
+import numpy as np
 import torch
 import torch.utils.data as torch_data
 
@@ -70,6 +72,27 @@ class BiDataset(torch_data.Dataset):
         return len(self.indices)
 
 
+class BiKnowledgeDataset(BiDataset):
+    """Knowledge is a tensor with shape [knowledge_len, hidden size]"""
+
+    def __init__(self, matched_knowledge_path, **kwargs):
+        BiDataset.__init__(self, **kwargs)
+        # self.knowledge = pkl.load(open(knowledge_path, 'rb'))
+
+        self.matched_knowledge_path = matched_knowledge_path
+        # with open(matched_knowledge_path) as f:
+        #     self.matched_knowledge_list = [line.split() for line in f.read().strip().split('\n')]
+        # assert len(self.matched_knowledge_list) == self.length
+
+    def __getitem__(self, index):
+        src, tgt, original_src, original_tgt = BiDataset.__getitem__(self, index)
+        knowledge = list(map(int, linecache.getline(self.matched_knowledge_path, index+1).strip().split()))
+        # knowledge = np.stack([self.knowledge[node]
+        #                       for node in self.matched_knowledge_list[index]
+        #                       if node in self.knowledge])
+        return src, tgt, original_src, original_tgt, knowledge
+
+
 def splitDataset(data_set, sizes):
     length = len(data_set)
     indices = list(range(length))
@@ -87,7 +110,7 @@ def splitDataset(data_set, sizes):
 
 
 def padding(data):
-    src, tgt, original_src, original_tgt = zip(*data)
+    src, tgt, original_src, original_tgt, knowledge = zip(*data)
 
     src_len = [len(s) for s in src]
     src_pad = torch.zeros(len(src), max(src_len)).long()
@@ -101,9 +124,15 @@ def padding(data):
         end = tgt_len[i]
         tgt_pad[i, :end] = torch.LongTensor(s)[:end]
 
+    knowledge_len = [len(s) for s in knowledge]
+    knowledge_pad = torch.zeros(len(knowledge), max(knowledge_len)).long()
+    for i, s in enumerate(knowledge):
+        end = knowledge_len[i]
+        knowledge_pad[i, :end] = torch.LongTensor(s[end-1::-1])
+
     return src_pad, tgt_pad, \
-        torch.LongTensor(src_len), torch.LongTensor(tgt_len), \
-        original_src, original_tgt
+           torch.LongTensor(src_len), torch.LongTensor(tgt_len), \
+           original_src, original_tgt, knowledge_pad, torch.LongTensor(knowledge_len)
 
 
 def ae_padding(data):

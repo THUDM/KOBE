@@ -203,6 +203,7 @@ class TransformerEncoder(nn.Module):
         self.layer_norm = nn.LayerNorm(config.hidden_size, eps=1e-6)
         self.padding_idx = padding_idx
         self.condition_context_attn = BiAttention(config.hidden_size, config.dropout)
+        self.bi_attn_control_exp = nn.Linear(config.hidden_size, config.hidden_size * 4)
 
     def forward(self, src, lengths=None):
         """
@@ -266,7 +267,9 @@ class TransformerEncoder(nn.Module):
 
         assert self.config.positional
         if self.config.positional:
-            out = self.condition_context_attn(out, conditions_embed)
+            # out = self.condition_context_attn(out, conditions_embed)
+            # out = self.bi_attn_control_exp(out)
+            return out.transpose(0, 1)
         else:
             return out.transpose(0, 1), state   # [len, batch, size]
 

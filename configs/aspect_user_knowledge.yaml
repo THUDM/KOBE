@@ -1,5 +1,5 @@
 # Data
-data: 'data/baseline/preprocessed/'
+data: 'data/aspect-user/preprocessed/'
 max_time_step: 150
 shared_vocab: False
 unk: True
@@ -71,5 +71,6 @@ rl_coef: 0.7
 label_dict_file: ''
 
 ## KOBE
-conditioned: False
-knowledge: False
+conditioned: True
+knowledge: True
+knowledge: True

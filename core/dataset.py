@@ -25,8 +25,16 @@ def load_data(config):
     data["test"]["tgtF"] = os.path.join(config.data, "test.tgt.id")
     data["test"]["original_tgtF"] = os.path.join(config.data, "test.tgt.str")
 
-    train_set = utils.BiDataset(data["train"], char=config.char)
-    valid_set = utils.BiDataset(data["test"], char=config.char)
+    if config.knowledge:
+        train_set = utils.BiKnowledgeDataset(
+            os.path.join(config.data, 'train.matched_knowledge'),
+            infos=data['train'], char=config.char)
+        valid_set = utils.BiKnowledgeDataset(
+            os.path.join(config.data, 'test.matched_knowledge'),
+            infos=data['test'], char=config.char)
+    else:
+        train_set = utils.BiDataset(data["train"], char=config.char)
+        valid_set = utils.BiDataset(data["test"], char=config.char)
 
     src_vocab = data["dict"]["src"]
     tgt_vocab = data["dict"]["tgt"]

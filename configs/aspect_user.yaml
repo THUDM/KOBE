@@ -72,3 +72,4 @@ label_dict_file: ''
 
 ## KOBE
 conditioned: True
+knowledge: False
