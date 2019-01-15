@@ -20,7 +20,7 @@ beta1: 0.9
 beta2: 0.998
 emb_size: 512
 hidden_size: 512
-dec_num_layers: 1
+dec_num_layers: 2
 enc_num_layers: 6
 bidirectional: True
 dropout: 0.1

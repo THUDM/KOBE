@@ -24,7 +24,7 @@ def print_log(file):
 _, term_width = os.popen('stty size', 'r').read().split()
 term_width = int(term_width)
 
-TOTAL_BAR_LENGTH = 86.
+TOTAL_BAR_LENGTH = 30.
 last_time = time.time()
 begin_time = last_time
 def progress_bar(current, total, msg=None):
