@@ -114,8 +114,8 @@ def padding(data):
 
     src_len = [len(s) for s in src]
     knowledge_len = [len(s) for s in knowledge]
-    char_word_pad = max(max(src_len), max(knowledge_len))
-    src_pad = torch.zeros(len(src), char_word_pad).long()
+    # char_word_pad = max(max(src_len), max(knowledge_len))
+    src_pad = torch.zeros(len(src), max(src_len)).long()
     for i, s in enumerate(src):
         end = src_len[i]
         src_pad[i, :end] = torch.LongTensor(s[end-1::-1])
@@ -126,7 +126,7 @@ def padding(data):
         end = tgt_len[i]
         tgt_pad[i, :end] = torch.LongTensor(s)[:end]
 
-    knowledge_pad = torch.zeros(len(knowledge), char_word_pad).long()
+    knowledge_pad = torch.zeros(len(knowledge), max(knowledge_len)).long()
     for i, s in enumerate(knowledge):
         end = knowledge_len[i]
         knowledge_pad[i, :end] = torch.LongTensor(s[end-1::-1])
