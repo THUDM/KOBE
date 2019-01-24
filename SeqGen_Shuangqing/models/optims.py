@@ -47,22 +47,22 @@ class Optim(object):
     def step(self):
         self._step += 1
 
-        if self.decay_method == "noam":
-            self._set_rate(
-                self.original_lr *
-                (self.model_size ** (-0.5) *
-                 min(self._step ** (-0.5),
-                     self._step * self.warmup_steps**(-1.5))))
-        else:
-            if ((self.start_decay_steps is not None) and (
-                    self._step >= self.start_decay_steps)):
-                self.start_decay = True
-            if self.start_decay:
-                if ((self._step - self.start_decay_steps)
-                        % self.decay_steps == 0):
-                    self.lr = self.lr * self.lr_decay
+        # if self.decay_method == "noam":
+        #     self._set_rate(
+        #         self.original_lr *
+        #         (self.model_size ** (-0.5) *
+        #          min(self._step ** (-0.5),
+        #              self._step * self.warmup_steps**(-1.5))))
+        # else:
+        #     if ((self.start_decay_steps is not None) and (
+        #             self._step >= self.start_decay_steps)):
+        #         self.start_decay = True
+        #     if self.start_decay:
+        #         if ((self._step - self.start_decay_steps)
+        #                 % self.decay_steps == 0):
+        #             self.lr = self.lr * self.lr_decay
 
-        self.optimizer.param_groups[0]['lr'] = self.lr
+        # self.optimizer.param_groups[0]['lr'] = self.lr
 
         if self.max_grad_norm > 0:
             clip_grad_norm_(self.params, self.max_grad_norm)

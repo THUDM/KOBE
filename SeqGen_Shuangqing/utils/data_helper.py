@@ -7,33 +7,37 @@ import utils
 num_samples = 1
 
 
-class MonoDataset(torch_data.Dataset):
+class BiTestDataset(torch_data.Dataset):
 
-    def __init__(self, infos, indexes=None):
+    def __init__(self, infos, indices=None):
 
-        self.srcF = infos['srcF']
-        self.original_srcF = infos['original_srcF']
+        self.src_id = infos['src_id']
+        self.src_str = infos['src_str']
+        self.tgt_id = infos['tgt_id']
+        self.tgt_str = infos['tgt_str']
         self.length = infos['length']
         self.infos = infos
-        if indexes is None:
-            self.indexes = list(range(self.length))
+        if indices is None:
+            self.indices = list(range(self.length))
         else:
-            self.indexes = indexes
+            self.indices = indices
 
     def __getitem__(self, index):
-        index = self.indexes[index]
-        src = list(map(int, linecache.getline(self.srcF, index+1).strip().split()))
-        original_src = linecache.getline(self.original_srcF, index+1).strip().split()
+        index = self.indices[index]
+        src = self.src_id[index]
+        original_src = self.src_str[index]
+        tgt = self.tgt_id[index]
+        original_tgt = self.tgt_str[index]
 
-        return src, original_src
+        return src, tgt, original_src, original_tgt
 
     def __len__(self):
-        return len(self.indexes)
+        return len(self.indices)
 
 
 class BiDataset(torch_data.Dataset):
 
-    def __init__(self, infos, indexes=None, char=False):
+    def __init__(self, infos, indices=None, char=False):
 
         self.srcF = infos['srcF']
         self.tgtF = infos['tgtF']
@@ -42,38 +46,41 @@ class BiDataset(torch_data.Dataset):
         self.length = infos['length']
         self.infos = infos
         self.char = char
-        if indexes is None:
-            self.indexes = list(range(self.length))
+        if indices is None:
+            self.indices = list(range(self.length))
         else:
-            self.indexes = indexes
+            self.indices = indices
 
     def __getitem__(self, index):
-        index = self.indexes[index]
-        src = list(map(int, linecache.getline(self.srcF, index+1).strip().split()))
-        tgt = list(map(int, linecache.getline(self.tgtF, index+1).strip().split()))
-        original_src = linecache.getline(self.original_srcF, index+1).strip().split()
+        index = self.indices[index]
+        src = list(map(int, linecache.getline(
+            self.srcF, index+1).strip().split()))
+        tgt = list(map(int, linecache.getline(
+            self.tgtF, index+1).strip().split()))
+        original_src = linecache.getline(
+            self.original_srcF, index+1).strip().split()
         original_tgt = linecache.getline(self.original_tgtF, index+1).strip().split() if not self.char else \
-                       list(linecache.getline(self.original_tgtF, index + 1).strip())
+            list(linecache.getline(self.original_tgtF, index + 1).strip())
 
         return src, tgt, original_src, original_tgt
 
     def __len__(self):
-        return len(self.indexes)
+        return len(self.indices)
 
 
 def splitDataset(data_set, sizes):
     length = len(data_set)
-    indexes = list(range(length))
+    indices = list(range(length))
     rng = Random()
     rng.seed(1234)
-    rng.shuffle(indexes)
+    rng.shuffle(indices)
 
     data_sets = []
     part_len = int(length / sizes)
     for i in range(sizes-1):
-        data_sets.append(BiDataset(data_set.infos, indexes[0:part_len]))
-        indexes = indexes[part_len:]
-    data_sets.append(BiDataset(data_set.infos, indexes))
+        data_sets.append(BiDataset(data_set.infos, indices[0:part_len]))
+        indices = indices[part_len:]
+    data_sets.append(BiDataset(data_set.infos, indices))
     return data_sets
 
 
@@ -93,8 +100,8 @@ def padding(data):
         tgt_pad[i, :end] = torch.LongTensor(s)[:end]
 
     return src_pad, tgt_pad, \
-           torch.LongTensor(src_len), torch.LongTensor(tgt_len), \
-           original_src, original_tgt
+        torch.LongTensor(src_len), torch.LongTensor(tgt_len), \
+        original_src, original_tgt
 
 
 def ae_padding(data):
@@ -121,8 +128,8 @@ def ae_padding(data):
         ae_pad[i, end-1] = utils.EOS
 
     return src_pad, tgt_pad, ae_pad, \
-           torch.LongTensor(src_len), torch.LongTensor(tgt_len), torch.LongTensor(ae_len), \
-           original_src, original_tgt
+        torch.LongTensor(src_len), torch.LongTensor(tgt_len), torch.LongTensor(ae_len), \
+        original_src, original_tgt
 
 
 def split_padding(data):
@@ -134,8 +141,10 @@ def split_padding(data):
     for i in range(utils.num_samples):
         split_src = src[i*num_per_sample:(i+1)*num_per_sample]
         split_tgt = tgt[i*num_per_sample:(i+1)*num_per_sample]
-        split_original_src = original_src[i * num_per_sample:(i + 1) * num_per_sample]
-        split_original_tgt = original_tgt[i * num_per_sample:(i + 1) * num_per_sample]
+        split_original_src = original_src[i *
+                                          num_per_sample:(i + 1) * num_per_sample]
+        split_original_tgt = original_tgt[i *
+                                          num_per_sample:(i + 1) * num_per_sample]
 
         src_len = [len(s) for s in split_src]
         src_pad = torch.zeros(len(split_src), max(src_len)).long()
@@ -150,7 +159,8 @@ def split_padding(data):
             tgt_pad[i, :end] = torch.LongTensor(s)[:end]
 
         split_samples.append([src_pad, tgt_pad,
-                              torch.LongTensor(src_len), torch.LongTensor(tgt_len),
+                              torch.LongTensor(
+                                  src_len), torch.LongTensor(tgt_len),
                               split_original_src, split_original_tgt])
 
     return split_samples
