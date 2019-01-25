@@ -205,7 +205,6 @@ class TransformerEncoder(nn.Module):
         self.condition_context_attn = BiAttention(config.hidden_size, config.dropout)
         self.bi_attn_control_exp = nn.Linear(config.hidden_size, config.hidden_size * 4)
 
-<<<<<<< HEAD:core/models/transformer.py
     def forward(self, src, lengths=None):
         """
         run transformer encoder
@@ -225,15 +224,6 @@ class TransformerEncoder(nn.Module):
             # print(src.shape) # max_len X batch_size
             conditions_1 = conditions_1.unsqueeze(0) # 1 X batch_size
             conditions_2 = conditions_2.unsqueeze(0) # 1 X batch_size
-=======
-    def forward(self, src, lengths=None, is_fact=False):
-        # HACK: recover the original sentence (removing the condition)
-        if not is_fact:
-            src[[length - 1 for length in lengths], range(src.shape[1])] = utils.PAD
-            lengths = [length - 1 for length in lengths]
-            assert all([length > 0 for length in lengths])
-
->>>>>>> TransformerEncoder for supporting facts:SeqGen_Shuangqing/models/transformer.py
         embed = self.embedding(src)
 
         # RNN for positional information
