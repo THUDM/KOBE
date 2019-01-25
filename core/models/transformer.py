@@ -158,6 +158,7 @@ class TransformerEncoder(nn.Module):
         self.embedding = nn.Embedding(config.src_vocab_size, config.emb_size,
                                       padding_idx=padding_idx)
         # positional encoding
+        # self.embed_transform = nn.Linear(2 * config.emb_size, config.emb_size)
         if config.positional:
             self.position_embedding = PositionalEncoding(
                 config.dropout, config.emb_size)
@@ -206,6 +207,7 @@ class TransformerEncoder(nn.Module):
         conditions_embed = conditions_embed.expand_as(embed)
         # Concat
         # emb = torch.cat([emb, conditions_embed], dim=-1)
+        # emb = self.embed_transform(emb)
         # Add
         emb = emb + conditions_embed
         # Remove condition
