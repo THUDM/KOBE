@@ -204,6 +204,7 @@ class TransformerEncoder(nn.Module):
         self.padding_idx = padding_idx
         self.condition_context_attn = BiAttention(config.hidden_size, config.dropout)
         self.bi_attn_transform = nn.Linear(config.hidden_size * 4, config.hidden_size)
+        self.embed_transform = nn.Linear(config.emb_size * 2, config.emb_size)
 
     def forward(self, src, lengths=None):
         """
