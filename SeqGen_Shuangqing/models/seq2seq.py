@@ -5,8 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import utils
 import models
-from fairseq import bleu
-from utils.reward_provider import CTRRewardProvider
+import pyrouge
+# from utils.reward_provider import CTRRewardProvider
+
 
 class LabelSmoothingLoss(nn.Module):
 
@@ -59,12 +60,12 @@ class seq2seq(nn.Module):
                 label_smoothing, config.tgt_vocab_size,
                 ignore_index=tgt_padding_idx)
         else:
-            self.criterion = nn.CrossEntropyLoss(ignore_index=utils.PAD)
+            self.criterion = nn.CrossEntropyLoss(ignore_index=utils.PAD, reduction='none')
         if config.use_cuda:
             self.criterion.cuda()
         if config.rl:
-            self.bleu_scorer = bleu.Scorer(pad=0, eos=3, unk=1)
-            self.reward_provider = CTRRewardProvider(config.ctr_rewared_provider_path)
+            # self.reward_provider = CTRRewardProvider(
+            #     config.ctr_rewared_provider_path)
             self.tgt_vocab = tgt_vocab
         self.padding_idx = tgt_padding_idx
 
@@ -73,19 +74,111 @@ class seq2seq(nn.Module):
         loss = self.criterion(scores, targets.contiguous().view(-1))
         return loss
 
+    def compute_reward(self, tgt, state):
+        sample_ids, probs, entropy = self.rl_sample(state)
+        sample_ids = sample_ids.t().tolist()
+        probs = probs.t()
+        for i, sample_id in enumerate(sample_ids):
+            x = sample_id.index(3) + 1 if 3 in sample_id else len(sample_id)
+            probs[i][x:] = 0
+            # probs[i] /= x  # length norm
+        tgt = tgt.tolist()
+        batch_size = probs.size(0)
+        # rewards = self.reward_func_batch(sample_ids, tgt)
+        rewards = []
+        for y, y_hat in zip(sample_ids, tgt):
+            rewards.append(self.reward_func(y, y_hat))
+        rewards = torch.tensor(rewards).unsqueeze(1).expand_as(probs).cuda()
+
+        if self.config.baseline == 'self_critic':
+            # for baseline
+            with torch.no_grad():
+                greedy_pred = self.greedy_sample(state)
+            # baselines = self.reward_func_batch(greedy_pre, tgt)
+            baselines = []
+            for y, y_hat in zip(greedy_pred, tgt):
+                baselines.append(self.reward_func(y, y_hat))
+            baselines = torch.tensor(baselines).unsqueeze(
+                1).expand_as(probs).cuda()
+            rewards = rewards - baselines
+        loss = -probs * rewards
+        return loss, rewards, baselines, entropy
+
+    def reward_func(self, y, y_hat, func='mlc'):
+        """Define your own reward function. Predefined functions are mlc, bleu, rouge"""
+        # hypo = self.tgt_vocab.convertToLabels(y, utils.EOS)
+        # target = self.tgt_vocab.convertToLabels(y_hat, utils.EOS)
+        # reward = self.reward_provider.reward_fn(hypo, target)
+        if func == 'mlc':
+            y_true = np.zeros(self.config.tgt_vocab_size - 4)
+            y_pre = np.zeros(self.config.tgt_vocab_size - 4)
+            for i in y:
+                if i == 3:
+                    break
+                else:
+                    if i > 3:
+                        y_true[i - 4] = 1
+            for i in y_hat:
+                if i == 3:
+                    break
+                else:
+                    if i > 3:
+                        y_pre[i - 4] = 1
+            if self.config.reward == 'f1':
+                reward = utils.metrics.f1_score(
+                    np.array([y_true]), np.array([y_pre]), average='micro')
+            elif self.config.reward == 'hamming_loss':
+                reward = metrics.hamming_loss(
+                    np.array([y_true]), np.array([y_pre]))
+        return reward
+
+    # def reward_func_batch(self, ys, y_hats):
+    #     hypos = [self.tgt_vocab.convertToLabels(y, utils.EOS) for y in ys]
+    #     targets = [self.tgt_vocab.convertToLabels(
+    #         y_hat, utils.EOS) for y_hat in y_hats]
+    #     reward = self.reward_provider.reward_fn_batched(hypos, targets)
+    #     return reward
+
+    def greedy_sample(self, state):
+        bos = torch.ones(state[0].size(1)).long().fill_(utils.BOS).cuda()
+        inputs, outputs, attn_matrix = [bos], [], []
+
+        for i in range(self.config.max_time_step):
+            output, state, attn_weights = self.decoder(inputs[i], state)
+            predicted = output.max(1)[1]
+            inputs += [predicted]
+            outputs += [predicted]
+            attn_matrix += [attn_weights]
+        sample_ids = torch.stack(outputs).t().tolist()
+
+        return sample_ids
+
+    def rl_sample(self, state):
+        bos = torch.ones(state[0].size(1)).long().fill_(utils.BOS).cuda()
+        inputs = [bos]
+        sample_ids, probs = [], []
+
+        entropy = 0
+        for i in range(self.config.max_time_step):
+            output, state, attn_weights = self.decoder(inputs[i], state)
+            entropy += (-F.softmax(output, dim=-1) * F.log_softmax(output, dim=-1)).sum(dim=1)
+            predicted = F.softmax(output, dim=-1).multinomial(1).squeeze()  # [batch]
+            prob = F.log_softmax(output, dim=-1)[range(len(predicted)), predicted]
+            inputs += [predicted]
+            sample_ids += [predicted]
+            probs += [prob]
+
+        entropy /= self.config.max_time_step
+        sample_ids = torch.stack(sample_ids).squeeze()  # [max_tgt_len, batch]
+        probs = torch.stack(probs).squeeze()  # [max_tgt_len, batch]
+
+        return sample_ids, probs, entropy
+
     def forward(self, src, src_len, dec, targets, teacher_ratio=1.0):
         return_dict = {}
-        if self.config.rl:
-            rl_loss, rewards, baselines, entropy = self.compute_reward(src.clone(), src_len.clone(), targets.clone())
-            # TODO entropy
-            rl_loss = rl_loss
-            return_dict['rl_loss'] = rl_loss.sum(dim=1).mean()
-            return_dict['reward_mean'] = rewards[:, 0].mean()
-            return_dict['greedy_mean'] = baselines[:, 0].mean()
-            return_dict['sample_mean'] = return_dict['reward_mean'] + return_dict['greedy_mean']
-            return_dict['entropy'] = entropy.mean()
         src = src.t()
         dec = dec.t()
+        tgt = targets
         targets = targets.t()
         teacher = random.random() < teacher_ratio
 
@@ -93,6 +186,19 @@ class seq2seq(nn.Module):
 
         if self.decoder.attention is not None:
             self.decoder.attention.init_context(context=contexts)
+
+        if self.config.rl:
+            rl_loss, rewards, baselines, entropy = self.compute_reward(
+                tgt, state)
+            # TODO entropy
+            rl_loss = rl_loss
+            return_dict['rl_loss'] = rl_loss.sum(dim=1).mean()
+            return_dict['reward_mean'] = rewards[:, 0].mean()
+            return_dict['greedy_mean'] = baselines[:, 0].mean()
+            return_dict['sample_mean'] = return_dict['reward_mean'] + \
+                return_dict['greedy_mean']
+            return_dict['entropy'] = entropy.mean()
+
         outputs = []
         if teacher:
             for input in dec.split(1):
@@ -120,11 +226,8 @@ class seq2seq(nn.Module):
         lengths, indices = torch.sort(src_len, dim=0, descending=True)
         _, reverse_indices = torch.sort(indices)
         src = torch.index_select(src, dim=0, index=indices)
-        bos = torch.ones(src.size(0)).long().fill_(utils.BOS)
+        bos = torch.ones(src.size(0)).long().fill_(utils.BOS).cuda()
         src = src.t()
-
-        if self.use_cuda:
-            bos = bos.cuda()
 
         contexts, state = self.encoder(src, lengths.tolist())
 
@@ -140,17 +243,17 @@ class seq2seq(nn.Module):
 
         outputs = torch.stack(outputs)
         sample_ids = torch.index_select(
-            outputs, dim=1, index=reverse_indices).t()
+            outputs, dim=1, index=reverse_indices).t().tolist()
 
         if self.decoder.attention is not None:
             attn_matrix = torch.stack(attn_matrix)
             alignments = attn_matrix.max(2)[1]
             alignments = torch.index_select(
-                alignments, dim=1, index=reverse_indices).t()
+                alignments, dim=1, index=reverse_indices).t().tolist()
         else:
             alignments = None
 
-        return sample_ids.tolist(), alignments
+        return sample_ids, alignments, attn_matrix
 
     def beam_sample(self, src, src_len, beam_size=1, eval_=False):
 
@@ -247,116 +350,3 @@ class seq2seq(nn.Module):
             return allHyps, allAttn, allWeight
 
         return allHyps, allAttn
-
-    def rl_sample(self, src, src_len, tgt):
-
-        lengths, indices = torch.sort(src_len, dim=0, descending=True)
-        _, reverse_indices = torch.sort(indices)
-        src = torch.index_select(src, dim=0, index=indices)
-        tgt = torch.index_select(tgt, dim=0, index=indices)
-        bos = torch.ones(src.size(0)).long().fill_(utils.BOS)
-        src = src.t()
-
-        if self.use_cuda:
-            bos = bos.cuda()
-
-        contexts, state = self.encoder(src, lengths.tolist())
-
-        if self.decoder.attention is not None:
-            self.decoder.attention.init_context(context=contexts)
-        inputs, sample_ids, probs = [bos], [], []
-
-        entropy = 0
-        for i in range(self.config.max_time_step):
-            output, state, attn_weights = self.decoder(inputs[i], state)
-            entropy += (-F.softmax(output) * F.log_softmax(output)).sum(dim=1)
-            predicted = F.softmax(output).multinomial(1).squeeze()  # [batch]
-            # one_hot = torch.zeros(output.size()).cuda().scatter_(
-            #     1, predicted.long(), 1)
-            # prob = torch.masked_select(F.log_softmax(
-            #     output), one_hot.type(torch.ByteTensor).cuda())
-            prob = F.log_softmax(output)[range(len(predicted)), predicted]
-            inputs += [predicted]
-            sample_ids += [predicted]
-            probs += [prob]
-
-        entropy /= self.config.max_time_step
-        sample_ids = torch.stack(sample_ids).squeeze()  # [max_tgt_len, batch]
-        sample_ids = sample_ids[:, reverse_indices]
-        probs = torch.stack(probs).squeeze()  # [max_tgt_len, batch]
-        probs = probs[:, reverse_indices]
-        entropy = entropy[reverse_indices]
-        return sample_ids, probs, entropy
-
-    def compute_reward(self, src, src_len, tgt):
-        sample_ids, probs, entropy = self.rl_sample(src, src_len, tgt)
-        sample_ids = sample_ids.t().tolist()
-        probs = probs.t()
-        for i, sample_id in enumerate(sample_ids):
-            x = sample_id.index(3) + 1 if 3 in sample_id else len(sample_id)
-            probs[i][x:] = 0
-            probs[i] /= x # length norm
-        tgt = tgt.tolist()
-        batch_size = probs.size(0)
-        rewards = self.reward_func_batch(sample_ids, tgt)
-        # rewards = []
-        # for y, y_hat in zip(sample_ids, tgt):
-        #     rewards.append(self.reward_func(y, y_hat))
-        rewards = torch.tensor(rewards).unsqueeze(1).expand_as(probs).cuda()
-
-        if self.config.baseline == 'self_critic':
-            # for baseline
-            with torch.no_grad():
-                greedy_pre, _ = self.sample(src, src_len)
-            baselines = self.reward_func_batch(greedy_pre, tgt)
-            # baselines = []
-            # for y, y_hat in zip(greedy_pre, tgt):
-            #     baselines.append(self.reward_func(y, y_hat))
-            baselines = torch.tensor(baselines).unsqueeze(
-                1).expand_as(probs).cuda()
-            rewards = rewards - baselines
-        
-        # if self.config.reward == 'f1':
-        loss = -probs * rewards
-        # elif self.config.reward == 'hamming_loss':
-            # loss = (probs * rewards)
-        return loss, rewards, baselines, entropy
-    
-    def reward_func_batch(self, ys, y_hats):
-        # reward = []
-        # for hypo, target in zip(ys, y_hats):
-        #     self.bleu_scorer.reset()
-        #     self.bleu_scorer.add(torch.IntTensor(hypo), torch.IntTensor(target))
-        #     reward.append(self.bleu_scorer.score())
-        hypos = [self.tgt_vocab.convertToLabels(y, utils.EOS) for y in ys]
-        targets = [self.tgt_vocab.convertToLabels(y_hat, utils.EOS) for y_hat in y_hats]
-        reward = self.reward_provider.reward_fn_batched(hypos, targets)
-        return reward
-
-    def reward_func(self, y, y_hat, func='mlc'):
-        """Define your own reward function. Predefined functions are mlc, bleu, rouge"""
-        hypo = self.tgt_vocab.convertToLabels(y, utils.EOS)
-        target = self.tgt_vocab.convertToLabels(y_hat, utils.EOS)
-        reward = self.reward_provider.reward_fn(hypo, target)
-        # if func == 'mlc':
-        #     y_true = np.zeros(self.config.tgt_vocab_size - 4)
-        #     y_pre = np.zeros(self.config.tgt_vocab_size - 4)
-        #     for i in y:
-        #         if i == 3:
-        #             break
-        #         else:
-        #             if i > 3:
-        #                 y_true[i - 4] = 1
-        #     for i in y_hat:
-        #         if i == 3:
-        #             break
-        #         else:
-        #             if i > 3:
-        #                 y_pre[i - 4] = 1
-            # if self.config.reward == 'f1':
-            # reward = utils.metrics.f1_score(
-            #     np.array([y_true]), np.array([y_pre]), average='micro')
-            # elif self.config.reward == 'hamming_loss':
-            #     reward = metrics.hamming_loss(
-            #         np.array([y_true]), np.array([y_pre]))
-        return reward

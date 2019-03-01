@@ -18,7 +18,7 @@ parser.add_argument('--src_filter', type=int, default=0,
                     help="Maximum source sequence length")
 parser.add_argument('--tgt_filter', type=int, default=0,
                     help="Maximum target sequence length")
-parser.add_argument('-src_trun', type=int, default=0,
+parser.add_argument('--src_trun', type=int, default=0,
                     help="Truncate source sequence length")
 parser.add_argument('--tgt_trun', type=int, default=0,
                     help="Truncate target sequence length")
@@ -28,7 +28,7 @@ parser.add_argument('-tgt_char', action='store_true',
                     help='character based decoding')
 parser.add_argument('--src_suf', default='src',
                     help="the suffix of the source filename")
-parser.add_argument('-tgt_suf', default='tgt',
+parser.add_argument('--tgt_suf', default='tgt',
                     help="the suffix of the target filename")
 parser.add_argument('--lower', action='store_true',
                     help='lower the case')
@@ -178,12 +178,12 @@ def main():
     test_src, test_tgt = opt.load_data + 'test.' + \
         opt.src_suf, opt.load_data + 'test.' + opt.tgt_suf
 
-    save_train_src, save_train_tgt = opt.save_data + 'train.' + \
-        opt.src_suf, opt.save_data + 'train.' + opt.tgt_suf
-    save_valid_src, save_valid_tgt = opt.save_data + 'valid.' + \
-        opt.src_suf, opt.save_data + 'valid.' + opt.tgt_suf
-    save_test_src, save_test_tgt = opt.save_data + 'test.' + \
-        opt.src_suf, opt.save_data + 'test.' + opt.tgt_suf
+    save_train_src, save_train_tgt = opt.save_data + \
+        'train.src', opt.save_data + 'train.tgt'
+    save_valid_src, save_valid_tgt = opt.save_data + \
+        'valid.src', opt.save_data + 'valid.tgt'
+    save_test_src, save_test_tgt = opt.save_data + \
+        'test.src', opt.save_data + 'test.tgt'
 
     src_dict, tgt_dict = opt.save_data + 'src.dict', opt.save_data + 'tgt.dict'
 

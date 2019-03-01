@@ -79,8 +79,11 @@ def makeTestData(srcFile, tgtFile, srcDicts, tgtDicts, opt=None, trun=True):
     tgtIdL, tgtStrL, = [], []
 
     if opt.label_dict_file:
-    	with open(opt.label_dict_file, 'r') as f:
-    		LabelDict = json.load(f)
+        with open(opt.label_dict_file, 'r') as f:
+            LabelDict = json.load(f)
+
+    if opt.rm:
+        rm = opt.rm
 
     while True:
         sline = srcF.readline()
@@ -165,7 +168,7 @@ def load_data(test_src, test_tgt, opt=None):
 
     testloader = torch.utils.data.DataLoader(dataset=testset,
                                              batch_size=test_batch_size,
-                                             shuffle=False,
+                                             shuffle=True,
                                              num_workers=0,
                                              collate_fn=utils.padding)
 
@@ -265,10 +268,10 @@ def eval_model(model, data, params):
         count += len(original_src)
         utils.progress_bar(count, total_count)
 
-    # i = 0
-    # for s, c, weight in zip(source[50:100], candidate[50:100], weights[50:100]):
-    #     showAttention(params['log_path'], s[60:90], c, weight[:len(c), 60:90], i)
-    #     i += 1
+    i = 0
+    for s, c, weight in zip(source[50:100], candidate[50:100], weights[50:100]):
+        showAttention(params['log_path'], s[60:90], c, weight[:len(c), 60:90], i)
+        i += 1
 
     if config.unk and config.attention != 'None':
         cands = []

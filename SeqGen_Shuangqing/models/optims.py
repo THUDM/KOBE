@@ -14,7 +14,7 @@ class Optim(object):
             self.optimizer = optim.Adadelta(self.params, lr=self.lr)
         elif self.method == 'adam':
             self.optimizer = optim.Adam(
-                self.params, lr=self.lr, betas=self.betas, eps=1e-9)
+                self.params, lr=self.lr, betas=self.betas)
         else:
             raise RuntimeError("Invalid optim method: " + self.method)
 
@@ -33,6 +33,7 @@ class Optim(object):
         self.lr_decay = lr_decay
         self.start_decay_steps = start_decay_steps
         self.start_decay = False
+        self.start_decay_at = 2
         self.betas = [beta1, beta2]
         self._step = 0
         self.decay_method = decay_method
@@ -47,23 +48,33 @@ class Optim(object):
     def step(self):
         self._step += 1
 
-        # if self.decay_method == "noam":
-        #     self._set_rate(
-        #         self.original_lr *
-        #         (self.model_size ** (-0.5) *
-        #          min(self._step ** (-0.5),
-        #              self._step * self.warmup_steps**(-1.5))))
-        # else:
-        #     if ((self.start_decay_steps is not None) and (
-        #             self._step >= self.start_decay_steps)):
-        #         self.start_decay = True
-        #     if self.start_decay:
-        #         if ((self._step - self.start_decay_steps)
-        #                 % self.decay_steps == 0):
-        #             self.lr = self.lr * self.lr_decay
+        if self.decay_method == "noam":
+            self._set_rate(
+                self.original_lr *
+                (self.model_size ** (-0.5) *
+                 min(self._step ** (-0.5),
+                     self._step * self.warmup_steps**(-1.5))))
+        else:
+            if ((self.start_decay_steps != 0) and (
+                    self._step >= self.start_decay_steps)):
+                self.start_decay = True
+            if self.start_decay:
+                if ((self._step - self.start_decay_steps)
+                        % self.decay_steps == 0):
+                    self.lr = self.lr * self.lr_decay
 
-        # self.optimizer.param_groups[0]['lr'] = self.lr
+        self.optimizer.param_groups[0]['lr'] = self.lr
 
         if self.max_grad_norm > 0:
             clip_grad_norm_(self.params, self.max_grad_norm)
         self.optimizer.step()
+
+    def updateLearningRate(self, epoch):
+        if self.start_decay_at is not None and epoch >= self.start_decay_at:
+            self.start_decay = True
+
+        if self.start_decay:
+            self.lr = self.lr * self.lr_decay
+            print("Decaying learning rate to %g" % self.lr)
+
+        self.optimizer.param_groups[0]['lr'] = self.lr

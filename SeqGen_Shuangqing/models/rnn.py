@@ -10,13 +10,15 @@ import utils
 from torch.distributions.bernoulli import Bernoulli
 import random
 
+
 def add_unk(input_token_id, p):
-    #random.random() gives you a value between 0 and 1
-    #to avoid switching your padding to 0 we add 'input_token_id > 1'
+    # random.random() gives you a value between 0 and 1
+    # to avoid switching your padding to 0 we add 'input_token_id > 1'
     if random.random() < p and input_token_id > 1:
         return 0
     else:
         return input_token_id
+
 
 class rnn_encoder(nn.Module):
 
@@ -24,9 +26,11 @@ class rnn_encoder(nn.Module):
         super(rnn_encoder, self).__init__()
 
         self.embedding = embedding if embedding is not None else nn.Embedding(
-            config.src_vocab_size, config.emb_size, padding_idx=padding_idx)
+            config.src_vocab_size, config.emb_size, padding_idx=0)
         self.hidden_size = config.hidden_size
         self.config = config
+        self.padding_idx = padding_idx
+        self.layer_norm = nn.LayerNorm(config.hidden_size, eps=1e-6)
 
         if config.swish:
             self.sw1 = nn.Sequential(
@@ -52,8 +56,8 @@ class rnn_encoder(nn.Module):
             self.sigmoid = nn.Sigmoid()
 
         if config.selfatt:
-            self.attention = models.luong_gate_attention(
-                config.hidden_size, config.emb_size)
+            self.self_attn = models.Multihead_Attention(
+                config.hidden_size, head_count=config.heads, dropout=config.dropout)
 
         if config.cell == 'gru':
             self.rnn = nn.GRU(input_size=config.emb_size, hidden_size=config.hidden_size,
@@ -68,11 +72,12 @@ class rnn_encoder(nn.Module):
 
     def forward(self, inputs, lengths):
         #probs = torch.empty(inputs.size(), device='cuda').uniform_(0, 1)
-        #inputs = torch.where(probs < self.config.emb_dropout, inputs, 
-                             #torch.zeros_like(inputs))
+        # inputs = torch.where(probs < self.config.emb_dropout, inputs,
+                             # torch.zeros_like(inputs))
         embs = pack(self.emb_drop(self.embedding(inputs)), lengths)
         #mask = Bernoulli(1 - self.config.emb_dropout).sample((embs.shape[0],))
         #embs = pack(embs.transpose(0, 1)[:, mask==1].transpose(0, 1), lengths)
+        self.rnn.flatten_parameters()
         outputs, state = self.rnn(embs)
         outputs = unpack(outputs)[0]
         if self.config.bidirectional:
@@ -90,7 +95,6 @@ class rnn_encoder(nn.Module):
             conv = torch.cat((conv1, conv3, conv33), 1)
             conv = self.filter_linear(conv.transpose(1, 2))
             if self.config.selfatt:
-                conv = conv.transpose(0, 1)
                 outputs = outputs.transpose(1, 2).transpose(0, 1)
             else:
                 gate = self.sigmoid(conv)
@@ -98,10 +102,25 @@ class rnn_encoder(nn.Module):
                 outputs = outputs.transpose(1, 2).transpose(0, 1)
 
         if self.config.selfatt:
-            self.attention.init_context(context=conv)
-            out_attn, weights = self.attention(conv, selfatt=True)
-            gate = self.sigmoid(out_attn)
-            outputs = outputs * gate
+            src_words = inputs.transpose(0, 1)
+            src_batch, src_len = src_words.size()
+            padding_idx = self.padding_idx
+            mask = src_words.data.eq(padding_idx).unsqueeze(1) \
+                .expand(src_batch, src_len, src_len)
+            if self.config.swish:
+                context, _ = self.self_attn(conv, conv, conv,
+                                            mask=mask)
+                gate = self.sigmoid(context)
+                outputs = outputs * gate.transpose(0, 1)
+            else:
+                outputs = outputs.transpose(0, 1)
+                context, _ = self.self_attn(outputs, outputs, outputs,
+                                            mask=mask)
+                if self.config.gate:
+                    outputs = context.transpose(0, 1) * outputs.transpose(0, 1)
+                else:
+                    outputs = context.transpose(0, 1) + outputs.transpose(0, 1)
+                # outputs = self.layer_norm(outputs)
 
         if self.config.cell == 'gru':
             state = state[:self.config.dec_num_layers]
@@ -116,7 +135,7 @@ class rnn_decoder(nn.Module):
     def __init__(self, config, embedding=None, use_attention=True, padding_idx=0):
         super(rnn_decoder, self).__init__()
         self.embedding = embedding if embedding is not None else nn.Embedding(
-            config.tgt_vocab_size, config.emb_size, padding_idx=padding_idx)
+            config.tgt_vocab_size, config.emb_size, padding_idx=0)
 
         input_size = config.emb_size
 
@@ -137,8 +156,7 @@ class rnn_decoder(nn.Module):
             self.attention = models.bahdanau_attention(
                 config.hidden_size, config.emb_size, config.pool_size)
         elif config.attention == 'luong':
-            self.attention = models.luong_attention(
-                config.hidden_size, config.emb_size, config.pool_size)
+            self.attention = models.luong_attention(config.hidden_size)
         elif config.attention == 'luong_gate':
             self.attention = models.luong_gate_attention(
                 config.hidden_size, config.emb_size, prob=config.dropout)
@@ -150,15 +168,16 @@ class rnn_decoder(nn.Module):
 
     def forward(self, input, state):
         #probs = torch.empty(input.size(), device='cuda').uniform_(0, 1)
-        #input = torch.where(probs < self.config.emb_dropout, 
-                            #input, torch.zeros_like(input))
+        # input = torch.where(probs < self.config.emb_dropout,
+                            # input, torch.zeros_like(input))
         embs = self.emb_drop(self.embedding(input))
         output, state = self.rnn(embs, state)
         if self.attention is not None:
             if self.config.attention == 'luong_gate':
-                output, attn_weights = self.attention(output)
+                output, attn_weights = self.attention(
+                    output, Bernoulli=self.config.Bernoulli)
             else:
-                output, attn_weights = self.attention(output, embs)
+                output, attn_weights = self.attention(output)
         else:
             attn_weights = None
 

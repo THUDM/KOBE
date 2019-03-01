@@ -1,5 +1,9 @@
 def model_opts(parser):
-
+    """
+    configuration for training and evaluation
+    :param parser: parser
+    :return: none
+    """
     parser.add_argument('--config', default='default.yaml', type=str,
                         help="config file")
     parser.add_argument('--gpus', default=[], nargs='+', type=int,
@@ -18,6 +22,10 @@ def model_opts(parser):
                         help="attention selection")
     parser.add_argument('--log', default='', type=str,
                         help="log directory")
+    parser.add_argument('--refF', default='', type=str,
+                        help="reference")
+    parser.add_argument('--save_individual', action='store_true', default=False,
+                        help="save individual checkpoint")
     parser.add_argument('--num_processes', type=int, default=4,
                         help="number of processes")
     parser.add_argument('--char', action='store_true', default=False, 
@@ -69,6 +77,12 @@ def model_opts(parser):
 
 
 def convert_to_config(opt, config):
+    """
+    function to combine opt and config
+    :param opt: commands
+    :param config: yaml configuration
+    :return: none
+    """
     opt = vars(opt)
     for key in opt:
         if key not in config:

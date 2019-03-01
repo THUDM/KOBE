@@ -17,7 +17,8 @@ class _LRScheduler(object):
                 if 'initial_lr' not in group:
                     raise KeyError("param 'initial_lr' is not specified "
                                    "in param_groups[{}] when resuming an optimizer".format(i))
-        self.base_lrs = list(map(lambda group: group['initial_lr'], optimizer.param_groups))
+        self.base_lrs = list(
+            map(lambda group: group['initial_lr'], optimizer.param_groups))
         self.step(last_epoch + 1)
         self.last_epoch = last_epoch
 
@@ -51,6 +52,7 @@ class LambdaLR(_LRScheduler):
         >>>     train(...)
         >>>     validate(...)
     """
+
     def __init__(self, optimizer, lr_lambda, last_epoch=-1):
         self.optimizer = optimizer
         if not isinstance(lr_lambda, list) and not isinstance(lr_lambda, tuple):
