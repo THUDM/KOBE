@@ -1,7 +1,9 @@
 import linecache
+from random import Random
+
 import torch
 import torch.utils.data as torch_data
-from random import Random
+
 import utils
 
 num_samples = 1

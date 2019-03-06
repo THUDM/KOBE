@@ -1,6 +1,7 @@
 import argparse
-import utils
 import pickle
+
+import utils
 
 parser = argparse.ArgumentParser(description='preprocess.py')
 
@@ -26,6 +27,8 @@ parser.add_argument('--src_char', action='store_true',
                     help='character based encoding')
 parser.add_argument('-tgt_char', action='store_true',
                     help='character based decoding')
+parser.add_argument('--src_dict', help='')
+parser.add_argument('--tgt_dict', help='')
 parser.add_argument('--src_suf', default='src',
                     help="the suffix of the source filename")
 parser.add_argument('--tgt_suf', default='tgt',
@@ -198,15 +201,21 @@ def main():
             train_tgt, opt.tgt_trun, opt.tgt_filter, opt.tgt_char, dicts['src'], opt.tgt_vocab_size, freq=opt.freq)
     else:
         print('Building source vocabulary...')
-        dicts['src'] = utils.Dict(
-            [utils.PAD_WORD, utils.UNK_WORD, utils.BOS_WORD, utils.EOS_WORD], lower=opt.lower)
-        dicts['src'] = makeVocabulary(
-            train_src, opt.src_trun, opt.src_filter, opt.src_char, dicts['src'], opt.src_vocab_size, freq=opt.freq)
-        print('Building target vocabulary...')
-        dicts['tgt'] = utils.Dict(
-            [utils.PAD_WORD, utils.UNK_WORD, utils.BOS_WORD, utils.EOS_WORD], lower=opt.lower)
-        dicts['tgt'] = makeVocabulary(
-            train_tgt, opt.tgt_trun, opt.tgt_filter, opt.tgt_char, dicts['tgt'], opt.tgt_vocab_size, freq=opt.freq)
+        if opt.src_dict:
+            dicts['src'] = utils.Dict(data=opt.src_dict, lower=opt.lower)
+        else:
+            dicts['src'] = utils.Dict(
+                [utils.PAD_WORD, utils.UNK_WORD, utils.BOS_WORD, utils.EOS_WORD], lower=opt.lower)
+            dicts['src'] = makeVocabulary(
+                train_src, opt.src_trun, opt.src_filter, opt.src_char, dicts['src'], opt.src_vocab_size, freq=opt.freq)
+            print('Building target vocabulary...')
+        if opt.tgt_dict:
+            dicts['tgt'] = utils.Dict(data=opt.tgt_dict, lower=opt.lower)
+        else:
+            dicts['tgt'] = utils.Dict(
+                [utils.PAD_WORD, utils.UNK_WORD, utils.BOS_WORD, utils.EOS_WORD], lower=opt.lower)
+            dicts['tgt'] = makeVocabulary(
+                train_tgt, opt.tgt_trun, opt.tgt_filter, opt.tgt_char, dicts['tgt'], opt.tgt_vocab_size, freq=opt.freq)
 
     print('Preparing training ...')
     train = makeData(train_src, train_tgt,

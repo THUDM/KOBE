@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import utils
+
 import models
+import utils
+
 # from fairseq import bleu
 # from utils.reward_provider import CTRRewardProvider
 

@@ -1,7 +1,11 @@
-import yaml
 import os
-import time
+import random
 import sys
+import time
+
+import numpy as np
+import torch
+from tensorboardX import SummaryWriter
 
 
 class AttrDict(dict):
@@ -10,99 +14,39 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
-def read_config(path):
-    return AttrDict(yaml.load(open(path, 'r')))
+def set_cuda(config):
+    use_cuda = torch.cuda.is_available() and len(config.gpus) > 0
+    assert config.use_cuda == use_cuda
+    if use_cuda:
+        # torch.cuda.set_device(config.gpus[0])
+        if len(config.gpus) > 1:
+            torch.cuda.manual_seed_all(config.seed)
+        else:
+            torch.cuda.manual_seed(config.seed)
+        torch.backends.cudnn.deterministic = True
+    device = (
+        torch.device("cuda:{}".format(config.gpus[0]))
+        if use_cuda
+        else torch.device("cpu")
+    )
+    devices_ids = config.gpus
+    return device, devices_ids
 
 
-def print_log(file):
-    def write_log(s):
-        print(s, end='')
-        with open(file, 'a') as f:
-            f.write(s)
-    return write_log
+def set_tensorboard(config):
+    summary_dir = os.path.join(config.logdir, config.expname)
+    if not os.path.exists(summary_dir):
+        os.makedirs(summary_dir)
+    for file_name in os.listdir(summary_dir):
+        if file_name.startswith("events.out.tfevents"):
+            print(f"Event file {file_name} already exists")
+            if input("Remove this file? (y/n) ") == "y":
+                os.remove(os.path.join(summary_dir, file_name))
+                print(f"Event file {file_name} removed")
+    return SummaryWriter(summary_dir)
 
 
-# _, term_width = os.popen('stty size', 'r').read().split()
-# term_width = int(term_width)
-#
-# TOTAL_BAR_LENGTH = 86.
-# last_time = time.time()
-# begin_time = last_time
-#
-#
-# def progress_bar(current, total, msg=None):
-#     global last_time, begin_time
-#     current = current % total
-#     if current == 0:
-#         begin_time = time.time()  # Reset for new bar.
-#
-#     cur_len = int(TOTAL_BAR_LENGTH*current/total)
-#     rest_len = int(TOTAL_BAR_LENGTH - cur_len) - 1
-#
-#     sys.stdout.write(' [')
-#     for i in range(cur_len):
-#         sys.stdout.write('=')
-#     sys.stdout.write('>')
-#     for i in range(rest_len):
-#         sys.stdout.write('.')
-#     sys.stdout.write(']')
-#
-#     cur_time = time.time()
-#     step_time = cur_time - last_time
-#     last_time = cur_time
-#     tot_time = cur_time - begin_time
-#
-#     L = []
-#     L.append('  Step: %s' % format_time(step_time))
-#     L.append(' | Tot: %s' % format_time(tot_time))
-#     if msg:
-#         L.append(' | ' + msg)
-#
-#     msg = ''.join(L)
-#     sys.stdout.write(msg)
-#     for i in range(term_width-int(TOTAL_BAR_LENGTH)-len(msg)-3):
-#         sys.stdout.write(' ')
-#
-#     # Go back to the center of the bar.
-#     for i in range(term_width-int(TOTAL_BAR_LENGTH/2)):
-#         sys.stdout.write('\b')
-#     sys.stdout.write(' %d/%d ' % (current+1, total))
-#
-#     if current < total-1:
-#         sys.stdout.write('\r')
-#     else:
-#         sys.stdout.write('\n')
-#     sys.stdout.flush()
-#
-#
-# def format_time(seconds):
-#     days = int(seconds / 3600/24)
-#     seconds = seconds - days*3600*24
-#     hours = int(seconds / 3600)
-#     seconds = seconds - hours*3600
-#     minutes = int(seconds / 60)
-#     seconds = seconds - minutes*60
-#     secondsf = int(seconds)
-#     seconds = seconds - secondsf
-#     millis = int(seconds*1000)
-#
-#     f = ''
-#     i = 1
-#     if days > 0:
-#         f += str(days) + 'D'
-#         i += 1
-#     if hours > 0 and i <= 2:
-#         f += str(hours) + 'h'
-#         i += 1
-#     if minutes > 0 and i <= 2:
-#         f += str(minutes) + 'm'
-#         i += 1
-#     if secondsf > 0 and i <= 2:
-#         f += str(secondsf) + 's'
-#         i += 1
-#     if millis > 0 and i <= 2:
-#         f += str(millis) + 'ms'
-#         i += 1
-#     if f == '':
-#         f = '0ms'
-#     return f
+def set_seed(seed):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)

@@ -1,5 +1,7 @@
 import torch
+
 import utils
+
 
 class Beam(object):
     def __init__(self, size, n_best=1, cuda=True, length_norm=False, minimum_length=0):

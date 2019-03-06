@@ -1,11 +1,14 @@
 import random
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import utils
+
 import models
 import pyrouge
+import utils
+
 # from utils.reward_provider import CTRRewardProvider
 
 

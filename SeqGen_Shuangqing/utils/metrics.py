@@ -1,9 +1,11 @@
-import pyrouge
 import codecs
-import os
 import logging
+import os
+
 import numpy as np
 from sklearn import metrics
+
+import pyrouge
 
 
 def bleu(reference, candidate, log_path, print_log, config, lang="de", bpe=False):

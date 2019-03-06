@@ -1,12 +1,13 @@
+import math
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
-import math
+
 import models
 from models import rnn
-import numpy as np
-
 
 MAX_SIZE = 5000
 

@@ -1,12 +1,13 @@
 import os
 import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torchtext import data, datasets
 from tqdm import tqdm
-from torchtext import data
-from torchtext import datasets
+
 from utils.kc_dataset import KCDataset
 
 # One of the key concepts in the FastText paper is that they calculate the n-grams of an input sentence and append them to the end of a sentence. Here, we'll use bi-grams. Briefly, a bi-gram is a pair of words/tokens that appear consecutively within a sentence.

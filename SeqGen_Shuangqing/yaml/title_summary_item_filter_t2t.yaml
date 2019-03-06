@@ -1,49 +1,71 @@
-data: '/apsarapangu/disk2/shuangqing.ljy/data/know_card/title_summary_item/filter/data/'
-logF: 'experiments/title_summary_item_filter/'
-#refF: '/home/linjunyang/en_vi/valid.tgt'
-tensorboard: True
-tensorboard_log_dir: 'experiments/title_summary_item_filter/tensorboard/t2t/'
-epoch: 20
-batch_size: 64
+# Data
+data: '../data/3.8/preprocessed/'
+max_time_step: 150
+shared_vocab: False
+unk: True
+label_smoothing: 0.1
+scale: 1 # Proportion of the training set
+refF: ''
+
+
+# Logging
+logdir: 'experiments/'
+report_interval: 100
+eval_interval: 5000
+save_interval: 5000
+metrics: ['bleu']
+
+
+# Optimization
+epoch: 1000
 optim: 'adam'
-cell: 'lstm'
-attention: 'luong_gate'
-param_init: 0
-param_init_glorot: True
 learning_rate: 2
-max_grad_norm: 1
 learning_rate_decay: 0.95
 start_decay_steps: 10000
-warmup_steps: 16000
 decay_method: "noam"
 beta1: 0.9
 beta2: 0.998
-emb_size: 512
-hidden_size: 512
-dec_num_layers: 6
-enc_num_layers: 6
-bidirectional: True
-dropout: 0.1
-emb_dropout: 0.1
-max_time_step: 150
-report_interval: 100
-eval_interval: 5000
-save_interval: 3000
-metrics: ['bleu']
-shared_vocab: False
-beam_size: 1
-unk: True
-schedule: False
-selfatt: False
-schesamp: False
-swish: False
-length_norm: True
+max_grad_norm: 1
+warmup_steps: 16000
+epoch_decay: False # decay by epochs after decay starts
+schedule: False # Learning rate schedule
+schesamp: False # Scheduled sampling
+
+
+# Model
+model: 'tensor2tensor'
+## Transformer
+positional: True
 heads: 8
 d_ff: 2048
-label_smoothing: 0.1
-positional: True
+## RNN
+cell: 'lstm'
 convolutional: False
+bidirectional: True
+char: False # character-level encoding
+## 
+attention: 'luong_gate'
+param_init: 0
+param_init_glorot: True
+emb_size: 512
+hidden_size: 512
+enc_num_layers: 6
+dec_num_layers: 2
+dropout: 0.1
+emb_dropout: 0.1
+swish: False
+length_norm: True
+pool_size: 0 # Pool size of maxout layer
+
+
+# Others
+seed: 1234
+use_cuda: True
+Bernoulli: False # Bernoulli selection
+gate: False # To guarantee selfatttn is working for global encoding
+selfatt: False # selfatt for both global encoding and inverse attention
 rl: False
 reward: "f1"
 baseline: "self_critic"
 rl_coef: 0.7
+label_dict_file: ''

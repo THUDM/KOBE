@@ -1,7 +1,8 @@
-import os
 import glob
+import os
 
 from torchtext import data
+
 
 class KCDataset(data.Dataset):
 
