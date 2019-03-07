@@ -27,22 +27,8 @@ from utils import misc_utils
 
 matplotlib.use("Agg")
 
-# Combine command-line arguments and yaml file arguments
-opt = opts.model_opts()
-config = yaml.load(open(opt.config, "r"))
-config = Namespace(**config, **vars(opt))
-
-writer = misc_utils.set_tensorboard(config)
-device, devices_ids = misc_utils.set_cuda(config)
-misc_utils.set_seed(config.seed)
-
-if config.label_dict_file:
-    with open(config.label_dict_file, "r") as f:
-        label_dict = json.load(f)
-
-
 # build model
-def build_model(checkpoints):
+def build_model(checkpoints, config, device):
     """
     build model, either Seq2Seq or Tensor2Tensor
     :param checkpoints: load checkpoint if there is pretrained model
@@ -106,6 +92,7 @@ def build_model(checkpoints):
         warmup_steps=config.warmup_steps,
         model_size=config.hidden_size,
     )
+    print(optim)
     if checkpoints is not None:
         optim = optim.optimizer.load_state_dict(checkpoints["optim"])
     optim.set_parameters(model.parameters())
@@ -117,7 +104,7 @@ def build_model(checkpoints):
     return model, optim
 
 
-def train_model(model, data, optim, epoch, params):
+def train_model(model, data, optim, epoch, params, config, device, writer):
     model.train()
     train_loader = data["train_loader"]
     log_vars = defaultdict(float)
@@ -219,7 +206,7 @@ def train_model(model, data, optim, epoch, params):
 
         if params["updates"] % config.eval_interval == 0:
             print("evaluating after %d updates...\r" % params["updates"])
-            score = eval_model(model, data, params)
+            score = eval_model(model, data, params, config, device, writer)
             for metric in config.metrics:
                 params[metric].append(score[metric])
                 if score[metric] >= max(params[metric]):
@@ -238,6 +225,7 @@ def train_model(model, data, optim, epoch, params):
                         model,
                         optim,
                         params["updates"],
+                        config,
                     )
                 if config.tensorboard:
                     writer.add_scalar(
@@ -252,9 +240,14 @@ def train_model(model, data, optim, epoch, params):
                     model,
                     optim,
                     params["updates"],
+                    config,
                 )
             save_model(
-                params["log_path"] + "checkpoint.pt", model, optim, params["updates"]
+                params["log_path"] + "checkpoint.pt",
+                model,
+                optim,
+                params["updates"],
+                config,
             )
 
     if config.epoch_decay:
@@ -264,7 +257,7 @@ def train_model(model, data, optim, epoch, params):
             optim.updateLearningRate(epoch)
 
 
-def eval_model(model, data, params):
+def eval_model(model, data, params, config, device, writer):
     model.eval()
     reference, candidate, source, alignments = [], [], [], []
     # count, total_count = 0, len(data['valid_set'])
@@ -277,7 +270,7 @@ def eval_model(model, data, params):
 
         with torch.no_grad():
             if config.beam_size > 1:
-                samples, alignment, weight = model.beam_sample(
+                samples, alignment = model.beam_sample(
                     src, src_len, beam_size=config.beam_size, eval_=True
                 )
             else:
@@ -308,7 +301,7 @@ def eval_model(model, data, params):
         candidate = cands
 
     with codecs.open(
-        os.path.join(params["log_path"], 'candidate.txt'), "w+", "utf-8"
+        os.path.join(params["log_path"], "candidate.txt"), "w+", "utf-8"
     ) as f:
         for i in range(len(candidate)):
             f.write(f"{' '.join(candidate[i])}\n")
@@ -335,7 +328,7 @@ def eval_model(model, data, params):
 
 
 # save model
-def save_model(path, model, optim, updates):
+def save_model(path, model, optim, updates, config):
     if len(config.gpus) > 1:
         model_state_dict = model.module.state_dict()
         optim_state_dict = optim.optimizer.state_dict()
@@ -378,6 +371,19 @@ def showAttention(path, s, c, attentions, index):
 
 
 if __name__ == "__main__":
+    # Combine command-line arguments and yaml file arguments
+    opt = opts.model_opts()
+    config = yaml.load(open(opt.config, "r"))
+    config = Namespace(**config, **vars(opt))
+
+    writer = misc_utils.set_tensorboard(config)
+    device, devices_ids = misc_utils.set_cuda(config)
+    misc_utils.set_seed(config.seed)
+
+    if config.label_dict_file:
+        with open(config.label_dict_file, "r") as f:
+            label_dict = json.load(f)
+
     if config.restore:
         print("loading checkpoint...\n")
         checkpoints = torch.load(
@@ -387,7 +393,7 @@ if __name__ == "__main__":
         checkpoints = None
 
     data = load_data(config)
-    model, optim = build_model(checkpoints)
+    model, optim = build_model(checkpoints, config, device)
     if config.schedule:
         scheduler = L.CosineAnnealingLR(optim.optimizer, T_max=config.epoch)
 
@@ -409,8 +415,8 @@ if __name__ == "__main__":
             if config.schedule:
                 scheduler.step()
                 print("Decaying learning rate to %g" % scheduler.get_lr()[0])
-            train_model(model, data, optim, i, params)
+            train_model(model, data, optim, i, params, config, device, writer)
         for metric in config.metrics:
             print("Best %s score: %.3f\n" % (metric, max(params[metric])))
     else:
-        score = eval_model(model, data, params)
+        score = eval_model(model, data, params, config, device, writer)
