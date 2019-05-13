@@ -6,5 +6,5 @@ Accepted to KDD 2019 Applied Data Science Track!
 
 ## [Project](https://sites.google.com/view/kobe2019) | [Arxiv](https://arxiv.org/abs/1903.12457)
 
-Under construction.
+Under construction. Expect an official release of the dataset and cleaner code at the end of May. :)
 
