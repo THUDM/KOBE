@@ -12,9 +12,11 @@ Under construction. Expect an official release of the dataset and cleaner code a
 
 Please cite our paper if you use this code in your own work:
 
+```
 @article{chen2019towards,
   title={Towards Knowledge-Based Personalized Product Description Generation in E-commerce},
   author={Chen, Qibin and Lin, Junyang and Zhang, Yichang and Yang, Hongxia and Zhou, Jingren and Tang, Jie},
   journal={arXiv preprint arXiv:1903.12457},
   year={2019}
 }
+```
