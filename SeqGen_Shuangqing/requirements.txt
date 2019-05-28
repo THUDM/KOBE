@@ -1,4 +1,0 @@
-pyrouge
-matplotlib
-scikit-learn
-PyYAML

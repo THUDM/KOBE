@@ -3,7 +3,7 @@
 ### [Project](https://sites.google.com/view/kobe2019) | [arXiv](https://arxiv.org/abs/1903.12457)
 
 Towards **K**n**O**wledge-**B**ased p**E**rsonalized Product Description Generation in E-commerce.<br>
-[Qibin Chen](https://www.qibin.ink)<sup>*</sup>, [Junyang Lin](https://justinlin610.github.io)<sup>*</sup>, Yichang Zhang, [Hongxia Yang](https://sites.google.com/site/hystatistics/home), [Jingren Zhou](http://www.cs.columbia.edu/~jrzhou/), [Jie Tang](http://keg.cs.tsinghua.edu.cn/jietang/).<br>
+[Qibin Chen](https://www.qibin.ink)<sup>\*</sup>, [Junyang Lin](https://justinlin610.github.io)<sup>\*</sup>, Yichang Zhang, [Hongxia Yang](https://sites.google.com/site/hystatistics/home), [Jingren Zhou](http://www.cs.columbia.edu/~jrzhou/), [Jie Tang](http://keg.cs.tsinghua.edu.cn/jietang/).<br>
 <sup>*</sup>Equal contribution.<br>
 In KDD 2019 (Applied Data Science Track)
 
@@ -38,7 +38,7 @@ pip install -r requirements.txt
     - (optional) You can download the un-preprocessed dataset from [TODO]().
 
 ### Training
-#### Downloading preprocessed dataset
+#### Download preprocessed dataset
 
 - First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
     - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/cn_download_preprocessed_tao.py`.
@@ -47,13 +47,16 @@ pip install -r requirements.txt
 
 - TODO
 
-#### Tracking training progress
+#### Track training progress
 
 - Tensorboard
 
 ### Generation
 
 ### Evaluation
+
+If you have ANY difficulties to get things working, feel free to open an issue.
+You can expect a reply within 24 hours.
 
 ## Cite
 
