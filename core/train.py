@@ -115,8 +115,9 @@ def train_model(model, data, optim, epoch, params, config, device, writer):
             else:
                 return_dict, outputs = model(
                     src, lengths, dec, targets
-                )  # outputs: [batch, len, size]
-            pred = outputs.transpose(0, 1).max(2)[1]
+                )
+            # outputs: [len, batch, size]
+            pred = outputs.max(2)[1]
             targets = targets.t()
             num_correct = (
                 pred.eq(targets).masked_select(targets.ne(utils.PAD)).sum().item()
@@ -151,30 +152,29 @@ def train_model(model, data, optim, epoch, params, config, device, writer):
         params["updates"] += 1
 
         if params["updates"] % config.report_interval == 0:
-            print(
-                "epoch: %3d, loss: %6.3f, time: %6.3f, updates: %8d, accuracy: %2.2f\n"
-                % (
-                    epoch,
-                    params["report_total_loss"] / config.report_interval,
-                    time.time() - params["report_time"],
-                    params["updates"],
-                    params["report_correct"] * 100.0 / params["report_total"],
-                )
-            )
+            # print(
+            #     "epoch: %3d, loss: %6.3f, time: %6.3f, updates: %8d, accuracy: %2.2f\n"
+            #     % (
+            #         epoch,
+            #         params["report_total_loss"] / config.report_interval,
+            #         time.time() - params["report_time"],
+            #         params["updates"],
+            #         params["report_correct"] * 100.0 / params["report_total"],
+            #     )
+            # )
 
-            if config.tensorboard:
-                for key in return_dict:
-                    writer.add_scalar(
-                        f"train/{key}",
-                        log_vars[key] / config.report_interval,
-                        params["updates"],
-                    )
-                # writer.add_scalar("train" + "/lr", optim.lr, params['updates'])
+            for key in return_dict:
                 writer.add_scalar(
-                    "train" + "/accuracy",
-                    params["report_correct"] / params["report_total"],
+                    f"train/{key}",
+                    log_vars[key] / config.report_interval,
                     params["updates"],
                 )
+            # writer.add_scalar("train" + "/lr", optim.lr, params['updates'])
+            writer.add_scalar(
+                "train" + "/accuracy",
+                params["report_correct"] / params["report_total"],
+                params["updates"],
+            )
 
             log_vars = defaultdict(float)
             params["report_total_loss"], params["report_time"] = 0, time.time()
@@ -203,10 +203,9 @@ def train_model(model, data, optim, epoch, params, config, device, writer):
                         params["updates"],
                         config,
                     )
-                if config.tensorboard:
-                    writer.add_scalar(
-                        "valid" + "/" + metric, score[metric], params["updates"]
-                    )
+                writer.add_scalar(
+                    "valid" + "/" + metric, score[metric], params["updates"]
+                )
             model.train()
 
         if params["updates"] % config.save_interval == 0:

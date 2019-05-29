@@ -53,7 +53,7 @@ class LabelSmoothingLoss(nn.Module):
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
 
-        return F.kl_div(output, model_prob)#, reduction='sum')
+        return F.kl_div(output, model_prob, reduction='sum')
 
 
 class tensor2tensor(nn.Module):

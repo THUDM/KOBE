@@ -4,16 +4,16 @@ from tqdm import tqdm
 
 
 def generate_n_grams(x, n):
-    n_grams = set(zip(*[x[i:] for i in range(n)]))
+    n_grams = list(zip(*[x[i:] for i in range(n)]))
     return n_grams
 
 
 def distinct_n_grams(tokenized_lines, n):
 
-    n_grams_all = set()
+    n_grams_all = []
     for line in tokenized_lines:
         n_grams = generate_n_grams(line, n)
-        n_grams_all |= n_grams
+        n_grams_all += n_grams
 
     return len(set(n_grams_all)), len(set(n_grams_all)) / len(n_grams_all)
 

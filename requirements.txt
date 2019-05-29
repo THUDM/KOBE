@@ -1,5 +1,7 @@
 pyrouge
 pyyaml
-tqdm
-tensorboardX
 sklearn
+tensorboard
+tensorboardX
+tensorflow
+tqdm
