@@ -154,11 +154,9 @@ class TransformerEncoder(nn.Module):
         self.config = config
         self.num_layers = config.enc_num_layers
 
-        # HACK: 512 for word embeddings, 512 for condition embeddings
         self.embedding = nn.Embedding(config.src_vocab_size, config.emb_size,
                                       padding_idx=padding_idx)
         # positional encoding
-        # self.embed_transform = nn.Linear(2 * config.emb_size, config.emb_size)
         if config.positional:
             self.position_embedding = PositionalEncoding(
                 config.dropout, config.emb_size)
@@ -181,17 +179,18 @@ class TransformerEncoder(nn.Module):
         :param lengths: sorted lengths
         :return: output and state (if with rnn)
         """
-        # HACK: recover the original sentence without the condition
-        conditions_1 = src[[length - 1 for length in lengths], range(src.shape[1])]
-        conditions_2 = src[[length - 2 for length in lengths], range(src.shape[1])]
-        src[[length - 1 for length in lengths], range(src.shape[1])] = utils.PAD
-        src[[length - 2 for length in lengths], range(src.shape[1])] = utils.PAD
-        lengths = [length - 2 for length in lengths]
-        assert all([length > 0 for length in lengths])
-        # print(conditions.shape) # batch_size
-        # print(src.shape) # max_len X batch_size
-        conditions_1 = conditions_1.unsqueeze(0) # 1 X batch_size
-        conditions_2 = conditions_2.unsqueeze(0) # 1 X batch_size
+        if self.config.conditioned:
+            # HACK: recover the original sentence without the condition
+            conditions_1 = src[[length - 1 for length in lengths], range(src.shape[1])]
+            conditions_2 = src[[length - 2 for length in lengths], range(src.shape[1])]
+            src[[length - 1 for length in lengths], range(src.shape[1])] = utils.PAD
+            src[[length - 2 for length in lengths], range(src.shape[1])] = utils.PAD
+            lengths = [length - 2 for length in lengths]
+            assert all([length > 0 for length in lengths])
+            # print(conditions.shape) # batch_size
+            # print(src.shape) # max_len X batch_size
+            conditions_1 = conditions_1.unsqueeze(0) # 1 X batch_size
+            conditions_2 = conditions_2.unsqueeze(0) # 1 X batch_size
         embed = self.embedding(src)
 
         # RNN for positional information
@@ -205,21 +204,22 @@ class TransformerEncoder(nn.Module):
             emb = emb + embed   # [len, batch, size]
             state = (state[0][0], state[1][0])  # LSTM states
 
-        assert self.config.positional
-        conditions_1_embed = self.embedding(conditions_1)
-        conditions_1_embed = conditions_1_embed.expand_as(embed)
-        conditions_2_embed = self.embedding(conditions_2)
-        conditions_2_embed = conditions_2_embed.expand_as(embed)
-        # Concat
-        # emb = torch.cat([emb, conditions_embed], dim=-1)
-        # emb = self.embed_transform(emb)
-        # emb = torch.cat([emb, conditions_1_embed + conditions_2_embed], dim=-1)
-        # emb = self.embed_transform(emb)
-        # Add
-        # emb = emb + conditions_embed
-        emb = emb + conditions_1_embed + conditions_2_embed
-        # Remove condition
-        # emb = emb
+        if self.config.conditioned:
+            assert self.config.positional
+            conditions_1_embed = self.embedding(conditions_1)
+            conditions_1_embed = conditions_1_embed.expand_as(embed)
+            conditions_2_embed = self.embedding(conditions_2)
+            conditions_2_embed = conditions_2_embed.expand_as(embed)
+            # Concat
+            # emb = torch.cat([emb, conditions_embed], dim=-1)
+            # emb = self.embed_transform(emb)
+            # emb = torch.cat([emb, conditions_1_embed + conditions_2_embed], dim=-1)
+            # emb = self.embed_transform(emb)
+            # Add
+            # emb = emb + conditions_embed
+            emb = emb + conditions_1_embed + conditions_2_embed
+            # Remove condition
+            # emb = emb
 
         out = emb.transpose(0, 1).contiguous()  # [batch, len, size]
         src_words = src.transpose(0, 1)  # [batch, len]

@@ -58,7 +58,7 @@ def bleu(reference, candidate, log_path, print_log, config, lang="de", bpe=False
     # command = "perl script/multi-bleu-detok.perl " + \
     #     detok_ref_file + "<" + detok_cand_file + "> " + temp
     # run the multi-bleu perl script and get the score
-    command = "perl core/script/multi-bleu.perl -lc " + \
+    command = "perl core/utils/multi-bleu.perl -lc " + \
         ref_file + "<" + cand_file + "> " + temp
     os.system(command)
     with open(temp) as ft:
