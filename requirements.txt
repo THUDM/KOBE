@@ -1,0 +1,8 @@
+pyrouge
+pyyaml
+requests
+sklearn
+tensorboard
+tensorboardX
+tensorflow
+tqdm
