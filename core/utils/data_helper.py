@@ -108,8 +108,26 @@ def splitDataset(data_set, sizes):
     data_sets.append(BiDataset(data_set.infos, indices))
     return data_sets
 
-
 def padding(data):
+    src, tgt, original_src, original_tgt = zip(*data)
+
+    src_len = [len(s) for s in src]
+    src_pad = torch.zeros(len(src), max(src_len)).long()
+    for i, s in enumerate(src):
+        end = src_len[i]
+        src_pad[i, :end] = torch.LongTensor(s[end-1::-1])
+
+    tgt_len = [len(s) for s in tgt]
+    tgt_pad = torch.zeros(len(tgt), max(tgt_len)).long()
+    for i, s in enumerate(tgt):
+        end = tgt_len[i]
+        tgt_pad[i, :end] = torch.LongTensor(s)[:end]
+
+    return src_pad, tgt_pad, \
+           torch.LongTensor(src_len), torch.LongTensor(tgt_len), \
+           original_src, original_tgt, None, None
+
+def knowledge_padding(data):
     src, tgt, original_src, original_tgt, knowledge = zip(*data)
 
     src_len = [len(s) for s in src]

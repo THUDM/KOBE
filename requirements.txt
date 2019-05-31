@@ -1,5 +1,6 @@
 pyrouge
 pyyaml
+requests
 sklearn
 tensorboard
 tensorboardX

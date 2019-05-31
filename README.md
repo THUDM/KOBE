@@ -34,14 +34,14 @@ pip install -r requirements.txt
 ### Dataset
 
 - TaoDescribe
-    - We use the [TaoDescribe](https://tianchi.aliyun.com/dataset/dataDetail?dataId=9717) dataset, which contains 2,129,187 product titles and descriptions in Chinese.
-    - (optional) You can download the un-preprocessed dataset from [TODO]().
+    - We use the **TaoDescribe** dataset, which contains 2,129,187 product titles and descriptions in Chinese.
+    - (optional) You can download the un-preprocessed dataset from [here](https://www.dropbox.com/sh/nnnq9eobmn6u44v/AAA7s4YkVbslS-6slDIOn4MYa) or [here](https://tianchi.aliyun.com/dataset/dataDetail?dataId=9717).
 
 ### Training
-#### Download preprocessed dataset
+#### Download preprocessed data
 
 - First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
-    - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/cn_download_preprocessed_tao.py`.
+    - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/download_preprocessed_tao.py --cn`.
 
 #### Start training
 

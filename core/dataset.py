@@ -27,10 +27,10 @@ def load_data(config):
 
     if config.knowledge:
         train_set = utils.BiKnowledgeDataset(
-            os.path.join(config.data, 'train.matched_knowledge'),
+            os.path.join(config.data, 'train.supporting_facts'),
             infos=data['train'], char=config.char)
         valid_set = utils.BiKnowledgeDataset(
-            os.path.join(config.data, 'test.matched_knowledge'),
+            os.path.join(config.data, 'test.supporting_facts'),
             infos=data['test'], char=config.char)
     else:
         train_set = utils.BiDataset(data["train"], char=config.char)
@@ -46,7 +46,7 @@ def load_data(config):
         batch_size=config.batch_size,
         shuffle=True,
         num_workers=0,
-        collate_fn=utils.padding,
+        collate_fn=utils.knowledge_padding if config.knowledge else utils.padding,
     )
     if hasattr(config, "valid_batch_size"):
         valid_batch_size = config.valid_batch_size
@@ -57,7 +57,7 @@ def load_data(config):
         batch_size=valid_batch_size,
         shuffle=False,
         num_workers=0,
-        collate_fn=utils.padding,
+        collate_fn=utils.knowledge_padding if config.knowledge else utils.padding,
     )
     return {
         "train_set": train_set,

@@ -264,7 +264,7 @@ class tensor2tensor(nn.Module):
 
         return sample_ids, probs, entropy
 
-    def forward(self, src, src_len, dec, targets, teacher_ratio=1.0):
+    def forward(self, src, src_len, dec, targets, knowledge, knowledge_len, teacher_ratio=1.0):
         """
         run transformer
         :param src: source input
@@ -278,9 +278,16 @@ class tensor2tensor(nn.Module):
         src = src.t()   # [len, batch]
         dec = dec.t()   # [len, batch]
         targets = targets.t()   # [len, batch]
+        if self.conifg.knowledge:
+            knowledge = knowledge.t()
 
         if self.config.positional:
+            mask = (knowledge.t() != 0).float()
+            knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
             contexts = self.encoder(src, src_len.tolist())  # [len, batch, size]
+            contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
+            contexts = self.encoder.bi_attn_transform(contexts)
+            contexts = contexts.transpose(0, 1)
         else:
             contexts, state = self.encoder(src, src_len.tolist())   # [len, batch, size]
 
@@ -291,17 +298,16 @@ class tensor2tensor(nn.Module):
         #print(src.device, id(self.decoder.init_state))
         #print(src.device, id(self.decoder))
         #print(src.device, self.decoder.state['cache'])
-        if self.config.rl:
-            rl_loss, rewards, baselines, entropy = self.compute_reward(
-                contexts, targets.clone())
-            # TODO entropy
-            rl_loss = rl_loss
-            return_dict['rl_loss'] = rl_loss.sum(dim=1).mean()
-            return_dict['reward_mean'] = rewards[:, 0].mean()
-            return_dict['greedy_mean'] = baselines[:, 0].mean()
-            return_dict['sample_mean'] = return_dict['reward_mean'] + \
-                return_dict['greedy_mean']
-            return_dict['entropy'] = entropy.mean()
+        # if self.config.rl:
+        #     rl_loss, rewards, baselines, entropy = self.compute_reward(
+        #         contexts, targets.clone())
+        #     rl_loss = rl_loss
+        #     return_dict['rl_loss'] = rl_loss.sum(dim=1).mean()
+        #     return_dict['reward_mean'] = rewards[:, 0].mean()
+        #     return_dict['greedy_mean'] = baselines[:, 0].mean()
+        #     return_dict['sample_mean'] = return_dict['reward_mean'] + \
+        #         return_dict['greedy_mean']
+        #     return_dict['entropy'] = entropy.mean()
 
         if self.config.positional:
             outputs, attn_weights = self.decoder(dec, contexts) # [len, batch, size]
@@ -314,7 +320,7 @@ class tensor2tensor(nn.Module):
 
         return return_dict, scores
 
-    def sample(self, src, src_len):
+    def sample(self, src, src_len, knowledge, knowledge_len):
         """
         Greedy sampling for inference
         :param src: source input
@@ -328,9 +334,16 @@ class tensor2tensor(nn.Module):
         if self.use_cuda:
             bos = bos.cuda()
         src = src.t()   # [len, batch]
+        if self.conifg.knowledge:
+            knowledge = knowledge.t()
 
         if self.config.positional:
-            contexts = self.encoder(src, lengths.tolist())  # [len, batch, size]
+            mask = (knowledge.t() != 0).float()
+            knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
+            contexts = self.encoder(src, src_len.tolist())  # [len, batch, size]
+            contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
+            contexts = self.encoder.bi_attn_transform(contexts)
+            contexts = contexts.transpose(0, 1)
         else:
             contexts, state = self.encoder(src, lengths.tolist())   # [len, batch, size]
         # self.decoder.init_state(src, contexts)
@@ -362,7 +375,7 @@ class tensor2tensor(nn.Module):
 
         return sample_ids, alignments
 
-    def beam_sample(self, src, src_len, beam_size=1, eval_=False):
+    def beam_sample(self, src, src_len, knowledge, knowledge_len, beam_size=1, eval_=False):
         """
         beam search
         :param src: source input
@@ -377,8 +390,16 @@ class tensor2tensor(nn.Module):
         src = src.t()   # [len, batch]
         batch_size = src.size(1)
 
+        if self.conifg.knowledge:
+            knowledge = knowledge.t()
+
         if self.config.positional:
-            contexts = self.encoder(src, lengths.tolist())  # [len, batch, size]
+            mask = (knowledge.t() != 0).float()
+            knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
+            contexts = self.encoder(src, src_len.tolist())  # [len, batch, size]
+            contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
+            contexts = self.encoder.bi_attn_transform(contexts)
+            contexts = contexts.transpose(0, 1)
         else:
             contexts, state = self.encoder(src, lengths.tolist())   # [len, batch, size]
 
