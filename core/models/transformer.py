@@ -205,14 +205,14 @@ class TransformerEncoder(nn.Module):
         self.condition_context_attn = BiAttention(config.hidden_size, config.dropout)
         self.bi_attn_transform = nn.Linear(config.hidden_size * 4, config.hidden_size)
 
-    def forward(self, src, lengths=None):
+    def forward(self, src, lengths=None, is_knowledge=False):
         """
         run transformer encoder
         :param src: source input
         :param lengths: sorted lengths
         :return: output and state (if with rnn)
         """
-        if self.config.conditioned:
+        if self.config.conditioned and not is_knowledge:
             # HACK: recover the original sentence without the condition
             conditions_1 = src[[length - 1 for length in lengths], range(src.shape[1])]
             conditions_2 = src[[length - 2 for length in lengths], range(src.shape[1])]
@@ -237,7 +237,7 @@ class TransformerEncoder(nn.Module):
             emb = emb + embed   # [len, batch, size]
             state = (state[0][0], state[1][0])  # LSTM states
 
-        if self.config.conditioned:
+        if self.config.conditioned and not is_knowledge:
             assert self.config.positional
             conditions_1_embed = self.embedding(conditions_1)
             conditions_1_embed = conditions_1_embed.expand_as(embed)

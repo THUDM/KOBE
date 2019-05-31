@@ -83,6 +83,13 @@ class tensor2tensor(nn.Module):
         else:
             self.encoder = models.TransformerEncoder(
                 config, padding_idx=src_padding_idx)
+            if self.config.knowledge:
+                # HACK: we use tgt_vocab for knowledge instead of src_vocab
+                src_vocab_size = config.src_vocab_size
+                config.src_vocab_size = config.tgt_vocab_size
+                self.knowledge_encoder = models.TransformerEncoder(
+                    config, padding_idx=src_padding_idx)
+                config.src_vocab_size = config.src_vocab_size
         tgt_embedding = self.encoder.embedding if config.shared_vocab else None
         # pretrained decoder or not
         if decoder is not None:
@@ -278,16 +285,19 @@ class tensor2tensor(nn.Module):
         src = src.t()   # [len, batch]
         dec = dec.t()   # [len, batch]
         targets = targets.t()   # [len, batch]
-        if self.conifg.knowledge:
+        if self.config.knowledge:
             knowledge = knowledge.t()
 
         if self.config.positional:
-            mask = (knowledge.t() != 0).float()
-            knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
+            if self.config.knowledge:
+                mask = (knowledge.t() != 0).float()
+                knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
             contexts = self.encoder(src, src_len.tolist())  # [len, batch, size]
-            contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
-            contexts = self.encoder.bi_attn_transform(contexts)
-            contexts = contexts.transpose(0, 1)
+            if self.config.knowledge:
+                contexts = contexts.transpose(0, 1)
+                contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
+                contexts = self.encoder.bi_attn_transform(contexts)
+                contexts = contexts.transpose(0, 1)
         else:
             contexts, state = self.encoder(src, src_len.tolist())   # [len, batch, size]
 
@@ -334,16 +344,19 @@ class tensor2tensor(nn.Module):
         if self.use_cuda:
             bos = bos.cuda()
         src = src.t()   # [len, batch]
-        if self.conifg.knowledge:
+        if self.config.knowledge:
             knowledge = knowledge.t()
 
         if self.config.positional:
-            mask = (knowledge.t() != 0).float()
-            knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
+            if self.config.knowledge:
+                mask = (knowledge.t() != 0).float()
+                knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
             contexts = self.encoder(src, src_len.tolist())  # [len, batch, size]
-            contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
-            contexts = self.encoder.bi_attn_transform(contexts)
-            contexts = contexts.transpose(0, 1)
+            if self.config.knowledge:
+                contexts = contexts.transpose(0, 1)
+                contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
+                contexts = self.encoder.bi_attn_transform(contexts)
+                contexts = contexts.transpose(0, 1)
         else:
             contexts, state = self.encoder(src, lengths.tolist())   # [len, batch, size]
         # self.decoder.init_state(src, contexts)
@@ -390,16 +403,19 @@ class tensor2tensor(nn.Module):
         src = src.t()   # [len, batch]
         batch_size = src.size(1)
 
-        if self.conifg.knowledge:
+        if self.config.knowledge:
             knowledge = knowledge.t()
 
         if self.config.positional:
-            mask = (knowledge.t() != 0).float()
-            knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
+            if self.config.knowledge:
+                mask = (knowledge.t() != 0).float()
+                knowledge_contexts = self.knowledge_encoder(knowledge, is_knowledge=True).transpose(0, 1)
             contexts = self.encoder(src, src_len.tolist())  # [len, batch, size]
-            contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
-            contexts = self.encoder.bi_attn_transform(contexts)
-            contexts = contexts.transpose(0, 1)
+            if self.config.knowledge:
+                contexts = contexts.transpose(0, 1)
+                contexts = self.encoder.condition_context_attn(contexts, knowledge_contexts, mask)
+                contexts = self.encoder.bi_attn_transform(contexts)
+                contexts = contexts.transpose(0, 1)
         else:
             contexts, state = self.encoder(src, lengths.tolist())   # [len, batch, size]
 
