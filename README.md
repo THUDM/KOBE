@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 - First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
     - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/download_preprocessed_tao.py --cn`.
-- (optional) You can peek into the `data/aspect-user/preprocessed/test.src.str` and `data/aspect-user/preprocessed/test.tgt.str`, which includes product titles and descriptions in the test set, respectively. In src files, `<x> <y>` means this product is intended to show with aspect `<x>` and user category `<y>`. Note: this slightly differs from the `<A-1>`, `<U-1>` format descripted in the paper but basically they are the same thing. You can also peek into
+- (optional) You can peek into the `data/aspect-user/preprocessed/test.src.str` and `data/aspect-user/preprocessed/test.tgt.str`, which include product titles and descriptions in the test set, respectively. In src files, `<x> <y>` means this product is intended to show with aspect `<x>` and user category `<y>`. Note: this slightly differs from the `<A-1>`, `<U-1>` format descripted in the paper but basically they are the same thing. You can also peek into
     `data/aspect-user/preprocessed/test.supporting_facts_str` to see the knowledge we extracted from dbpedia for the corresponding product.
 
 #### Start training
@@ -72,7 +72,7 @@ If you are having OOM problems, try to decrease it with the flag `--batch-size`.
 
 #### Track training progress
 
-- You can use TensorBoard. It can take (roughly) 12 hours for the training to stop. To get comparable results in paper, you need to train for even longer (by editing `epoch` in the config files). However, the current setting is enough to demonstrate the effectivenss our model.
+- You can use TensorBoard. It can take (roughly) 12 hours for the training to stop. To get comparable results in paper, you need to train for even longer (by editing `epoch` in the config files). However, the current setting is enough to demonstrate the effectiveness of our model.
 
 ```bash
 tensorboard --logdir experiments --port 6006
