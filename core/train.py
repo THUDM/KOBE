@@ -69,9 +69,9 @@ def build_model(checkpoints, config, device):
         model_size=config.hidden_size,
     )
     print(optim)
+    optim.set_parameters(model.parameters())
     if checkpoints is not None:
         optim = optim.optimizer.load_state_dict(checkpoints["optim"])
-    optim.set_parameters(model.parameters())
 
     param_count = sum([param.view(-1).size()[0] for param in model.parameters()])
     print(repr(model) + "\n\n")
@@ -248,7 +248,7 @@ def eval_model(model, data, params, config, device, writer):
         with torch.no_grad():
             if config.beam_size > 1:
                 samples, alignment = model.beam_sample(
-                    src, src_len, knowledge, knowledge_len, beam_size=config.beam_size, eval_=True
+                    src, src_len, knowledge, knowledge_len, beam_size=config.beam_size, eval_=False
                 )
             else:
                 samples, alignment = model.sample(src, src_len, knowledge, knowledge_len)
