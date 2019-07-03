@@ -89,7 +89,7 @@ class tensor2tensor(nn.Module):
                 config.src_vocab_size = config.tgt_vocab_size
                 self.knowledge_encoder = models.TransformerEncoder(
                     config, padding_idx=src_padding_idx)
-                config.src_vocab_size = config.src_vocab_size
+                config.src_vocab_size = src_vocab_size
         tgt_embedding = self.encoder.embedding if config.shared_vocab else None
         # pretrained decoder or not
         if decoder is not None:
