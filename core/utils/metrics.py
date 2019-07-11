@@ -1,6 +1,8 @@
 import codecs
 import logging
 import os
+import sys
+import subprocess
 
 import numpy as np
 from sklearn import metrics
@@ -60,7 +62,12 @@ def bleu(reference, candidate, log_path, print_log, config, lang="de", bpe=False
     # run the multi-bleu perl script and get the score
     command = "perl core/utils/multi-bleu.perl -lc " + \
         ref_file + "<" + cand_file + "> " + temp
-    os.system(command)
+
+    try:
+        subprocess.call(command, shell=True)
+    except OSError as e:
+        print("Execution failed:", e, file=sys.stderr)
+
     with open(temp) as ft:
         result = ft.read()
     os.remove(temp)
