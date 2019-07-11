@@ -71,7 +71,7 @@ def build_model(checkpoints, config, device):
     print(optim)
     optim.set_parameters(model.parameters())
     if checkpoints is not None:
-        optim = optim.optimizer.load_state_dict(checkpoints["optim"])
+        optim.optimizer.load_state_dict(checkpoints["optim"])
 
     param_count = sum([param.view(-1).size()[0] for param in model.parameters()])
     print(repr(model) + "\n\n")
