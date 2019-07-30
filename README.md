@@ -10,7 +10,7 @@ In KDD 2019 (Applied Data Science Track)
 ## Prerequisites
 
 - Linux or macOS
-- Python 3
+- Python 3.6
 - PyTorch >= 1.0.1
 - NVIDIA GPU + CUDA cuDNN
 
