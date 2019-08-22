@@ -11,7 +11,7 @@ In KDD 2019 (Applied Data Science Track)
 
 - Linux or macOS
 - Python 3.6
-- PyTorch >= 1.0.1
+- PyTorch 1.0.1
 - NVIDIA GPU + CUDA cuDNN
 
 ## Getting Started
