@@ -92,8 +92,6 @@ python core/train.py --config configs/baseline.yaml --mode eval --restore experi
 - BLEU
 - DIVERSITY
 
-TODO
-
 If you have ANY difficulties to get things working in the above steps, feel free to open an issue.
 You can expect a reply within 24 hours.
 
