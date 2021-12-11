@@ -1,6 +1,6 @@
 ## [KOBE v2: Towards Knowledge-Based Personalized Product Description Generation in E-commerce](https://arxiv.org/abs/1903.12457)
 
-[![Unittest](https://img.shields.io/github/workflow/status/THUDM/KOBE/Test)](https://github.com/THUDM/KOBE/actions/workflows/install.yml)
+[![Unittest](https://img.shields.io/github/workflow/status/THUDM/KOBE/Install)](https://github.com/THUDM/KOBE/actions/workflows/install.yml)
 [![GitHub stars](https://img.shields.io/github/stars/THUDM/KOBE)](https://github.com/THUDM/KOBE/stargazers)
 [![GitHub license](https://img.shields.io/github/license/THUDM/KOBE)](https://github.com/THUDM/KOBE/blob/master/LICENSE)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
@@ -17,7 +17,8 @@ Paper accepted at KDD 2019 (Applied Data Science Track). Latest version at [arXi
   - [Installation](#installation)
   - [Dataset](#dataset)
   - [Training](#training)
-    - [Download preprocessed data](#download-preprocessed-data)
+    - [Build vocabulary](#build-vocabulary)
+    - [Preprocessing](#preprocessing)
     - [Start training](#start-training)
     - [Track training progress](#track-training-progress)
   - [Generation](#generation)
@@ -48,15 +49,40 @@ Verify that KOBE is correctly installed by `import kobe`.
 ### Dataset
 
 - We use the **TaoDescribe** dataset, which contains 2,129,187 product titles and descriptions in Chinese.
-- (optional) You can download the un-preprocessed dataset from [here](https://www.dropbox.com/sh/nnnq9eobmn6u44v/AAA7s4YkVbslS-6slDIOn4MYa) or [here (for users in China)](https://tianchi.aliyun.com/dataset/dataDetail?dataId=9717).
+<!-- - (optional) You can download the un-preprocessed dataset from [here](https://www.dropbox.com/sh/nnnq9eobmn6u44v/AAA7s4YkVbslS-6slDIOn4MYa) or [here (for users in China)](https://tianchi.aliyun.com/dataset/dataDetail?dataId=9717). -->
+
+<details>
+<summary>
+Meanings of downloaded data files
+</summary>
+<ul>
+<li> train/valid/test.title: The product title as input (source) </li>
+<li> train/valid/test.desc: The product description as output (generation target) </li>
+<li> train/valid/test.cond: The product attribute and user category used as conditions in the KOBE model. The interpretations of these tags are explained at https://github.com/THUDM/KOBE/issues/14#issuecomment-516262659. </li>
+<li> train/valid/test.fact: The retrieved knowledge for each product </li>
+</ul>
+</details>
+
+<!-- - First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
+    - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/download_preprocessed_tao.py --cn`. -->
 
 ### Training
-#### Download preprocessed data
+#### Build vocabulary
 
-- First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
-    - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/download_preprocessed_tao.py --cn`.
-- (optional) You can peek into the `data/aspect-user/preprocessed/test.src.str` and `data/aspect-user/preprocessed/test.tgt.str`, which include product titles and descriptions in the test set, respectively. In src files, `<x> <y>` means this product is intended to show with aspect `<x>` and user category `<y>`. Note: this slightly differs from the `<A-1>`, `<U-1>` format descripted in the paper but basically they are the same thing. You can also peek into
-    `data/aspect-user/preprocessed/test.supporting_facts_str` to see the knowledge we extracted from dbpedia for the corresponding product.
+The first step is to build a vocabulary on the Chinese product title, product description and retrieved knowledge:
+
+```bash
+python -m kobe.vocab --input data-v2/raw/train.title data-v2/raw/train.desc data-v2/raw/train.fact --vocab-file data-v2/vocab.text
+python -m kobe.vocab --input data-v2/raw/train.cond --vocab-file data-v2/vocab.cond --vocab-size 31 --algo word
+```
+
+#### Preprocessing
+
+Then, we tokenize the texts with the built vocabulary and save the preprocessed samples.
+
+```bash
+
+```
 
 #### Start training
 

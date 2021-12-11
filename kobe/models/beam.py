@@ -1,5 +1,6 @@
 import torch
-import utils
+
+from kobe import utils
 
 
 class Beam(object):

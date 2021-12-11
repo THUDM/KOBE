@@ -5,7 +5,8 @@ from random import Random
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-import utils
+
+from kobe import utils
 
 num_samples = 1
 

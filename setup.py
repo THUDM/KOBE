@@ -12,6 +12,7 @@ setup(
         "black>=21.10b0",
         "gdown>=4.2.0",
         "isort>=5.8.0",
+        "joblib>=1.0.1",
         "pandas>=1.3.4",
         "pre-commit>=2.15.0",
         "pytest>=6.2.4",
@@ -21,5 +22,6 @@ setup(
         "torch>=1.10",
         "tqdm>=4.62.3",
         "wandb>=0.12.7",
+        "webdataset>=0.1.103",
     ],
 )

@@ -1,25 +1,21 @@
 import codecs
 import json
 import os
-import pickle
-import random
 import time
 from argparse import Namespace
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
-import lr_scheduler as L
-import models
-import numpy as np
-import opts
 import torch
-import torch.nn as nn
 import torch.utils.data
-import utils
 import yaml
-from dataset import load_data
 from torch.nn.init import xavier_uniform_
 from tqdm import tqdm
-from utils import misc_utils
+
+import kobe.lr_scheduler as L
+from kobe import models, utils
+from kobe.dataset import load_data
+from kobe.opts import model_opts
+from kobe.utils import misc_utils
 
 
 # build model
@@ -352,7 +348,7 @@ def save_model(path, model, optim, updates, config):
 
 if __name__ == "__main__":
     # Combine command-line arguments and yaml file arguments
-    opt = opts.model_opts()
+    opt = model_opts()
     config = yaml.load(open(opt.config, "r"))
     config = Namespace(**config, **vars(opt))
 
