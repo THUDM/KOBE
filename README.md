@@ -1,35 +1,36 @@
-# KOBE
+## [KOBE v2: Towards **K**n**O**wledge-**B**ased p**E**rsonalized Product Description Generation in E-commerce](https://arxiv.org/abs/1903.12457)
 
-### [Project](https://sites.google.com/view/kobe2019) | [arXiv](https://arxiv.org/abs/1903.12457)
+**New:** We release **KOBE v2**, a refactored version of the original code with the latest deep learning tools in 2021 and greatly improved the installation, reproducibility, performance, and visualization, in memory of Kobe Bryant.
 
-Towards **K**n**O**wledge-**B**ased p**E**rsonalized Product Description Generation in E-commerce.<br>
-[Qibin Chen](https://www.qibin.ink)<sup>\*</sup>, [Junyang Lin](https://justinlin610.github.io)<sup>\*</sup>, Yichang Zhang, [Hongxia Yang](https://sites.google.com/site/hystatistics/home), [Jingren Zhou](http://www.cs.columbia.edu/~jrzhou/), [Jie Tang](http://keg.cs.tsinghua.edu.cn/jietang/).<br>
-<sup>*</sup>Equal contribution.<br>
-In KDD 2019 (Applied Data Science Track)
+[![Unittest](https://img.shields.io/github/workflow/status/THUDM/KOBE/Test)](https://github.com/THUDM/KOBE/actions/workflows/install.yml)
+[![GitHub stars](https://img.shields.io/github/stars/THUDM/KOBE)](https://github.com/THUDM/KOBE/stargazers)
+[![GitHub license](https://img.shields.io/github/license/THUDM/KOBE)](https://github.com/THUDM/KOBE/blob/master/LICENSE)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+
+This repo contains code and pre-trained models for KOBE, a sequence-to-sequence based approach for automatically generating product descriptions by leveraging conditional inputs (such as user category)  and incorporating knowledge with retrieval augmented product titles.
+
+Paper accepted at KDD 2019 (Applied Data Science Track). Latest version at [arXiv](https://arxiv.org/abs/1903.12457).
 
 ## Prerequisites
 
-- Linux or macOS
-- Python 3.6
-- PyTorch 1.0.1
-- NVIDIA GPU + CUDA cuDNN
+- Linux
+- Python >= 3.6
+- PyTorch >= 1.10.
+- PyTorch Lightning >= 1.5.4
 
 ## Getting Started
 
 ### Installation
 
-Clone this repo.
+Clone and install KOBE.
 
 ```bash
 git clone https://github.com/THUDM/KOBE
 cd KOBE
+pip install -e .
 ```
 
-Please install dependencies by
-
-```bash
-pip install -r requirements.txt
-```
+Verify that KOBE is correctly installed by `import kobe`.
 
 ### Dataset
 
@@ -107,4 +108,3 @@ Please cite our paper if you use this code in your own work:
   year={2019}
 }
 ```
-
