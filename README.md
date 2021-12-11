@@ -72,8 +72,13 @@ Meanings of downloaded data files
 The first step is to build a vocabulary on the Chinese product title, product description and retrieved knowledge:
 
 ```bash
-python -m kobe.vocab --input data-v2/raw/train.title data-v2/raw/train.desc data-v2/raw/train.fact --vocab-file data-v2/vocab.text
-python -m kobe.vocab --input data-v2/raw/train.cond --vocab-file data-v2/vocab.cond --vocab-size 31 --algo word
+python -m kobe.data.vocab \
+  --input data-v2/raw/train.title data-v2/raw/train.desc data-v2/raw/train.fact \
+  --vocab-file data-v2/vocab.text \
+python -m kobe.data.vocab \
+  --input data-v2/raw/train.cond \
+  --vocab-file data-v2/vocab.cond \
+  --vocab-size 31 --algo word
 ```
 
 #### Preprocessing
@@ -81,7 +86,12 @@ python -m kobe.vocab --input data-v2/raw/train.cond --vocab-file data-v2/vocab.c
 Then, we tokenize the texts with the built vocabulary and save the preprocessed samples.
 
 ```bash
-
+python -m kobe.data.preprocess \
+  --raw-path data-v2/raw/ \
+  --processed-path data-v2/processed/ \
+  --split train valid test \
+  --vocab-file data-v2/vocab.text.model \
+  --cond-vocab-file data-v2/vocab.cond.model
 ```
 
 #### Start training
