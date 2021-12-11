@@ -241,8 +241,9 @@ class Multihead_Attention(nn.Module):
                 if layer_cache is not None:
                     # device name for correct saving
                     if layer_cache["memory_keys_" + device] is None:
-                        key, value = self.linear_keys(key), self.linear_values(
-                            value
+                        key, value = (
+                            self.linear_keys(key),
+                            self.linear_values(value),
                         )  # [batch, len, size]
                         key = shape(key)  # [batch, head, k_len, head_dim]
                         value = shape(value)  # [batch, head, v_len, head_dim]
@@ -254,8 +255,9 @@ class Multihead_Attention(nn.Module):
                     layer_cache["memory_keys_" + device] = key
                     layer_cache["memory_values_" + device] = value
                 else:
-                    key, value = self.linear_keys(key), self.linear_values(
-                        value
+                    key, value = (
+                        self.linear_keys(key),
+                        self.linear_values(value),
                     )  # [batch, len, size]
                     key = shape(key)  # [batch, head, k_len, head_dim]
                     value = shape(value)  # [batch, head, v_len, head_dim]

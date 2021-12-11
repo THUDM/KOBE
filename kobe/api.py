@@ -6,11 +6,10 @@ import subprocess
 from argparse import ArgumentParser, Namespace
 
 import torch
-import yaml
-from tqdm import tqdm
-
 import utils
+import yaml
 from dataset import load_data
+from tqdm import tqdm
 from train import build_model
 from utils import misc_utils
 
