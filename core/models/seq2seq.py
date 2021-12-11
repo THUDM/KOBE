@@ -1,19 +1,17 @@
 import random
 
+import models
 import numpy as np
+import pyrouge
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import models
-import pyrouge
 import utils
 
 # from utils.reward_provider import CTRRewardProvider
 
 
 class LabelSmoothingLoss(nn.Module):
-
     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
         assert 0.0 < label_smoothing <= 1.0
         self.padding_idx = ignore_index
@@ -21,7 +19,7 @@ class LabelSmoothingLoss(nn.Module):
         smoothing_value = label_smoothing / (tgt_vocab_size - 2)
         one_hot = torch.full((tgt_vocab_size,), smoothing_value)
         one_hot[self.padding_idx] = 0
-        self.register_buffer('one_hot', one_hot.unsqueeze(0))
+        self.register_buffer("one_hot", one_hot.unsqueeze(0))
         self.confidence = 1.0 - label_smoothing
 
     def forward(self, output, target):
@@ -34,36 +32,49 @@ class LabelSmoothingLoss(nn.Module):
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
 
-        return F.kl_div(output, model_prob, reduction='sum')
+        return F.kl_div(output, model_prob, reduction="sum")
 
 
 class seq2seq(nn.Module):
-
-    def __init__(self, config, use_attention=True, encoder=None, decoder=None,
-                 src_padding_idx=0, tgt_padding_idx=0, label_smoothing=0, tgt_vocab=None):
+    def __init__(
+        self,
+        config,
+        use_attention=True,
+        encoder=None,
+        decoder=None,
+        src_padding_idx=0,
+        tgt_padding_idx=0,
+        label_smoothing=0,
+        tgt_vocab=None,
+    ):
         super(seq2seq, self).__init__()
 
         if encoder is not None:
             self.encoder = encoder
         else:
-            self.encoder = models.rnn_encoder(
-                config, padding_idx=src_padding_idx)
+            self.encoder = models.rnn_encoder(config, padding_idx=src_padding_idx)
         tgt_embedding = self.encoder.embedding if config.shared_vocab else None
         if decoder is not None:
             self.decoder = decoder
         else:
             self.decoder = models.rnn_decoder(
-                config, embedding=tgt_embedding, use_attention=use_attention, padding_idx=tgt_padding_idx)
+                config,
+                embedding=tgt_embedding,
+                use_attention=use_attention,
+                padding_idx=tgt_padding_idx,
+            )
         self.log_softmax = nn.LogSoftmax(dim=-1)
         self.use_cuda = config.use_cuda
         self.config = config
         self.label_smoothing = label_smoothing
         if self.label_smoothing > 0:
             self.criterion = LabelSmoothingLoss(
-                label_smoothing, config.tgt_vocab_size,
-                ignore_index=tgt_padding_idx)
+                label_smoothing, config.tgt_vocab_size, ignore_index=tgt_padding_idx
+            )
         else:
-            self.criterion = nn.CrossEntropyLoss(ignore_index=utils.PAD, reduction='none')
+            self.criterion = nn.CrossEntropyLoss(
+                ignore_index=utils.PAD, reduction="none"
+            )
         if config.use_cuda:
             self.criterion.cuda()
         if config.rl:
@@ -93,7 +104,7 @@ class seq2seq(nn.Module):
             rewards.append(self.reward_func(y, y_hat))
         rewards = torch.tensor(rewards).unsqueeze(1).expand_as(probs).cuda()
 
-        if self.config.baseline == 'self_critic':
+        if self.config.baseline == "self_critic":
             # for baseline
             with torch.no_grad():
                 greedy_pred = self.greedy_sample(state)
@@ -101,18 +112,17 @@ class seq2seq(nn.Module):
             baselines = []
             for y, y_hat in zip(greedy_pred, tgt):
                 baselines.append(self.reward_func(y, y_hat))
-            baselines = torch.tensor(baselines).unsqueeze(
-                1).expand_as(probs).cuda()
+            baselines = torch.tensor(baselines).unsqueeze(1).expand_as(probs).cuda()
             rewards = rewards - baselines
         loss = -probs * rewards
         return loss, rewards, baselines, entropy
 
-    def reward_func(self, y, y_hat, func='mlc'):
+    def reward_func(self, y, y_hat, func="mlc"):
         """Define your own reward function. Predefined functions are mlc, bleu, rouge"""
         # hypo = self.tgt_vocab.convertToLabels(y, utils.EOS)
         # target = self.tgt_vocab.convertToLabels(y_hat, utils.EOS)
         # reward = self.reward_provider.reward_fn(hypo, target)
-        if func == 'mlc':
+        if func == "mlc":
             y_true = np.zeros(self.config.tgt_vocab_size - 4)
             y_pre = np.zeros(self.config.tgt_vocab_size - 4)
             for i in y:
@@ -127,12 +137,12 @@ class seq2seq(nn.Module):
                 else:
                     if i > 3:
                         y_pre[i - 4] = 1
-            if self.config.reward == 'f1':
+            if self.config.reward == "f1":
                 reward = utils.metrics.f1_score(
-                    np.array([y_true]), np.array([y_pre]), average='micro')
-            elif self.config.reward == 'hamming_loss':
-                reward = metrics.hamming_loss(
-                    np.array([y_true]), np.array([y_pre]))
+                    np.array([y_true]), np.array([y_pre]), average="micro"
+                )
+            elif self.config.reward == "hamming_loss":
+                reward = metrics.hamming_loss(np.array([y_true]), np.array([y_pre]))
         return reward
 
     # def reward_func_batch(self, ys, y_hats):
@@ -164,7 +174,9 @@ class seq2seq(nn.Module):
         entropy = 0
         for i in range(self.config.max_time_step):
             output, state, attn_weights = self.decoder(inputs[i], state)
-            entropy += (-F.softmax(output, dim=-1) * F.log_softmax(output, dim=-1)).sum(dim=1)
+            entropy += (-F.softmax(output, dim=-1) * F.log_softmax(output, dim=-1)).sum(
+                dim=1
+            )
             predicted = F.softmax(output, dim=-1).multinomial(1).squeeze()  # [batch]
             prob = F.log_softmax(output, dim=-1)[range(len(predicted)), predicted]
             inputs += [predicted]
@@ -191,22 +203,21 @@ class seq2seq(nn.Module):
             self.decoder.attention.init_context(context=contexts)
 
         if self.config.rl:
-            rl_loss, rewards, baselines, entropy = self.compute_reward(
-                tgt, state)
+            rl_loss, rewards, baselines, entropy = self.compute_reward(tgt, state)
             # TODO entropy
             rl_loss = rl_loss
-            return_dict['rl_loss'] = rl_loss.sum(dim=1).mean()
-            return_dict['reward_mean'] = rewards[:, 0].mean()
-            return_dict['greedy_mean'] = baselines[:, 0].mean()
-            return_dict['sample_mean'] = return_dict['reward_mean'] + \
-                return_dict['greedy_mean']
-            return_dict['entropy'] = entropy.mean()
+            return_dict["rl_loss"] = rl_loss.sum(dim=1).mean()
+            return_dict["reward_mean"] = rewards[:, 0].mean()
+            return_dict["greedy_mean"] = baselines[:, 0].mean()
+            return_dict["sample_mean"] = (
+                return_dict["reward_mean"] + return_dict["greedy_mean"]
+            )
+            return_dict["entropy"] = entropy.mean()
 
         outputs = []
         if teacher:
             for input in dec.split(1):
-                output, state, attn_weights = self.decoder(
-                    input.squeeze(0), state)
+                output, state, attn_weights = self.decoder(input.squeeze(0), state)
                 outputs.append(output)
             outputs = torch.stack(outputs)
         else:
@@ -220,7 +231,7 @@ class seq2seq(nn.Module):
 
         loss = self.compute_loss(outputs, targets)
 
-        return_dict['mle_loss'] = loss
+        return_dict["mle_loss"] = loss
 
         return return_dict, outputs
 
@@ -245,14 +256,18 @@ class seq2seq(nn.Module):
             attn_matrix += [attn_weights]
 
         outputs = torch.stack(outputs)
-        sample_ids = torch.index_select(
-            outputs, dim=1, index=reverse_indices).t().tolist()
+        sample_ids = (
+            torch.index_select(outputs, dim=1, index=reverse_indices).t().tolist()
+        )
 
         if self.decoder.attention is not None:
             attn_matrix = torch.stack(attn_matrix)
             alignments = attn_matrix.max(2)[1]
-            alignments = torch.index_select(
-                alignments, dim=1, index=reverse_indices).t().tolist()
+            alignments = (
+                torch.index_select(alignments, dim=1, index=reverse_indices)
+                .t()
+                .tolist()
+            )
         else:
             alignments = None
 
@@ -284,14 +299,20 @@ class seq2seq(nn.Module):
         # contexts = rvar(contexts.data)
         contexts = rvar(contexts)
 
-        if self.config.cell == 'lstm':
+        if self.config.cell == "lstm":
             decState = (rvar(encState[0]), rvar(encState[1]))
         else:
             decState = rvar(encState)
 
-        beam = [models.Beam(beam_size, n_best=1,
-                            cuda=self.use_cuda, length_norm=self.config.length_norm)
-                for __ in range(batch_size)]
+        beam = [
+            models.Beam(
+                beam_size,
+                n_best=1,
+                cuda=self.use_cuda,
+                length_norm=self.config.length_norm,
+            )
+            for __ in range(batch_size)
+        ]
         if self.decoder.attention is not None:
             self.decoder.attention.init_context(contexts)
 
@@ -304,8 +325,12 @@ class seq2seq(nn.Module):
 
             # Construct batch x beam_size nxt words.
             # Get all the pending current beam words and arrange for forward.
-            inp = torch.stack([b.getCurrentState()
-                               for b in beam]).t().contiguous().view(-1)
+            inp = (
+                torch.stack([b.getCurrentState() for b in beam])
+                .t()
+                .contiguous()
+                .view(-1)
+            )
 
             # Run one step.
             output, decState, attn = self.decoder(inp, decState)
@@ -320,7 +345,7 @@ class seq2seq(nn.Module):
             # update state
             for j, b in enumerate(beam):
                 b.advance(output[:, j], attn[:, j])
-                if self.config.cell == 'lstm':
+                if self.config.cell == "lstm":
                     b.beam_update(decState, j)
                 else:
                     b.beam_update_gru(decState, j)

@@ -1,5 +1,4 @@
 import torch
-
 import utils
 
 
@@ -17,8 +16,7 @@ class Beam(object):
         self.prevKs = []
 
         # The outputs at each time-step.
-        self.nextYs = [self.tt.LongTensor(size)
-                       .fill_(utils.PAD)]
+        self.nextYs = [self.tt.LongTensor(size).fill_(utils.PAD)]
         self.nextYs[0][0] = utils.BOS
 
         # Has EOS topped the beam yet.
@@ -34,7 +32,6 @@ class Beam(object):
 
         self.length_norm = length_norm
         self.minimum_length = minimum_length
-
 
     def getCurrentState(self):
         "Get the outputs for the current timestep."
@@ -66,16 +63,16 @@ class Beam(object):
             ngrams = []
             le = len(self.nextYs)
             for j in range(self.nextYs[-1].size(0)):
-                hyp, _ = self.getHyp(le-1, j)
+                hyp, _ = self.getHyp(le - 1, j)
                 ngrams = set()
                 fail = False
                 gram = []
-                for i in range(le-1):
+                for i in range(le - 1):
                     # last n tokens, n = block_ngram_repeat
                     gram = (gram + [hyp[i]])[-3:]
                     # skip the blocking if it is in the exclusion list
-                    #if set(gram) & self.exclusion_tokens:
-                        #continue
+                    # if set(gram) & self.exclusion_tokens:
+                    # continue
                     if tuple(gram) in ngrams:
                         fail = True
                     ngrams.add(tuple(gram))
@@ -126,15 +123,18 @@ class Beam(object):
 
     def beam_update_cache(self, state, idx):
         positions = self.getCurrentOrigin()
+
         def _recursive_map(struct):
             for k, v in struct.items():
                 if v is not None:
                     if isinstance(v, dict):
                         _recursive_map(v)
                     else:
-                        cache_state = struct[k][idx*self.size:(idx+1)*self.size]
-                        struct[k][idx*self.size:(idx+1)*self.size].copy_(
-                            cache_state.index_select(0, positions))
+                        cache_state = struct[k][idx * self.size : (idx + 1) * self.size]
+                        struct[k][idx * self.size : (idx + 1) * self.size].copy_(
+                            cache_state.index_select(0, positions)
+                        )
+
         _recursive_map(state)
 
     def beam_update_gru(self, state, idx):
@@ -173,7 +173,7 @@ class Beam(object):
         """
         hyp, attn = [], []
         for j in range(len(self.prevKs[:timestep]) - 1, -1, -1):
-            hyp.append(self.nextYs[j+1][k].item())
+            hyp.append(self.nextYs[j + 1][k].item())
             attn.append(self.attn[j][k])
             k = self.prevKs[j][k].item()
         return hyp[::-1], torch.stack(attn[::-1])

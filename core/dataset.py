@@ -2,7 +2,6 @@ import os
 import pickle
 
 import torch
-
 import utils
 
 
@@ -27,11 +26,15 @@ def load_data(config):
 
     if config.knowledge:
         train_set = utils.BiKnowledgeDataset(
-            os.path.join(config.data, 'train.supporting_facts'),
-            infos=data['train'], char=config.char)
+            os.path.join(config.data, "train.supporting_facts"),
+            infos=data["train"],
+            char=config.char,
+        )
         valid_set = utils.BiKnowledgeDataset(
-            os.path.join(config.data, 'test.supporting_facts'),
-            infos=data['test'], char=config.char)
+            os.path.join(config.data, "test.supporting_facts"),
+            infos=data["test"],
+            char=config.char,
+        )
     else:
         train_set = utils.BiDataset(data["train"], char=config.char)
         valid_set = utils.BiDataset(data["test"], char=config.char)

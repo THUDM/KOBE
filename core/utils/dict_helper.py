@@ -7,10 +7,10 @@ UNK = 1
 BOS = 2
 EOS = 3
 
-PAD_WORD = '<blank>'
-UNK_WORD = '<unk>'
-BOS_WORD = '<s>'
-EOS_WORD = '</s>'
+PAD_WORD = "<blank>"
+UNK_WORD = "<unk>"
+BOS_WORD = "<s>"
+EOS_WORD = "</s>"
 
 
 class Dict(object):
@@ -41,10 +41,10 @@ class Dict(object):
 
     # Write entries to a file.
     def writeFile(self, filename):
-        with open(filename, 'w') as file:
+        with open(filename, "w") as file:
             for i in range(self.size()):
                 label = self.idxToLabel[i]
-                file.write('%s %d\n' % (label, i))
+                file.write("%s %d\n" % (label, i))
 
         file.close()
 
@@ -153,7 +153,7 @@ class Dict(object):
                 vec += [id]
             else:
                 if label not in oovs:
-                    oovs[label] = len(oovs)+self.size()
+                    oovs[label] = len(oovs) + self.size()
                 oov_num = oovs[label]
                 vec += [oov_num]
 
@@ -162,7 +162,9 @@ class Dict(object):
 
         return torch.LongTensor(vec), oovs
 
-    def convertToIdxwithOOVs(self, labels, unkWord, bosWord=None, eosWord=None, oovs=None):
+    def convertToIdxwithOOVs(
+        self, labels, unkWord, bosWord=None, eosWord=None, oovs=None
+    ):
         vec = []
 
         if bosWord is not None:
@@ -192,6 +194,6 @@ class Dict(object):
             if i < self.size():
                 labels += [self.getLabel(i)]
             else:
-                labels += [oovs[i-self.size()]]
+                labels += [oovs[i - self.size()]]
 
         return labels

@@ -21,9 +21,7 @@ def set_cuda(config):
         torch.cuda.manual_seed(config.seed)
         torch.backends.cudnn.deterministic = True
     device = (
-        torch.device("cuda:{}".format(config.gpu))
-        if use_cuda
-        else torch.device("cpu")
+        torch.device("cuda:{}".format(config.gpu)) if use_cuda else torch.device("cpu")
     )
     devices_id = config.gpu
     return device, devices_id

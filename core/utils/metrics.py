@@ -1,13 +1,12 @@
 import codecs
 import logging
 import os
-import sys
 import subprocess
+import sys
 
 import numpy as np
-from sklearn import metrics
-
 import pyrouge
+from sklearn import metrics
 
 
 def bleu(reference, candidate, log_path, print_log, config, lang="de", bpe=False):
@@ -27,20 +26,20 @@ def bleu(reference, candidate, log_path, print_log, config, lang="de", bpe=False
     if config.refF != "":
         ref_file = config.refF
     else:
-        ref_file = log_path+'reference.txt'
-        with codecs.open(ref_file, 'w', 'utf-8') as f:
+        ref_file = log_path + "reference.txt"
+        with codecs.open(ref_file, "w", "utf-8") as f:
             for s in reference:
                 if not config.char:
-                    f.write(" ".join(s)+'\n')
+                    f.write(" ".join(s) + "\n")
                 else:
-                    f.write("".join(s) + '\n')
-    cand_file = log_path+'candidate.txt'
-    with codecs.open(cand_file, 'w', 'utf-8') as f:
+                    f.write("".join(s) + "\n")
+    cand_file = log_path + "candidate.txt"
+    with codecs.open(cand_file, "w", "utf-8") as f:
         for s in candidate:
             if not config.char:
-                f.write(" ".join(s).strip()+'\n')
+                f.write(" ".join(s).strip() + "\n")
             else:
-                f.write("".join(s).strip() + '\n')
+                f.write("".join(s).strip() + "\n")
     # file to store results
     temp = log_path + "result.txt"
     # implementation for German, nist bleu
@@ -60,8 +59,14 @@ def bleu(reference, candidate, log_path, print_log, config, lang="de", bpe=False
     # command = "perl script/multi-bleu-detok.perl " + \
     #     detok_ref_file + "<" + detok_cand_file + "> " + temp
     # run the multi-bleu perl script and get the score
-    command = "perl core/utils/multi-bleu.perl -lc " + \
-        ref_file + "<" + cand_file + "> " + temp
+    command = (
+        "perl core/utils/multi-bleu.perl -lc "
+        + ref_file
+        + "<"
+        + cand_file
+        + "> "
+        + temp
+    )
 
     try:
         subprocess.call(command, shell=True)
@@ -90,8 +95,8 @@ def rouge(reference, candidate, log_path, print_log, config):
     # check if of equal amount.
     assert len(reference) == len(candidate)
     # directory for saving sentences
-    ref_dir = log_path + 'reference/'
-    cand_dir = log_path + 'candidate/'
+    ref_dir = log_path + "reference/"
+    cand_dir = log_path + "candidate/"
     # check if there are directories for reference and candidate
     if not os.path.exists(ref_dir):
         os.mkdir(ref_dir)
@@ -100,37 +105,47 @@ def rouge(reference, candidate, log_path, print_log, config):
 
     # write files
     for i in range(len(reference)):
-        with codecs.open(ref_dir+"%06d_reference.txt" % i, 'w', 'utf-8') as f:
-            f.write(" ".join(reference[i]).replace(' <\s> ', '\n') + '\n')
-        with codecs.open(cand_dir+"%06d_candidate.txt" % i, 'w', 'utf-8') as f:
-            f.write(" ".join(candidate[i]).replace(
-                ' <\s> ', '\n').replace('<unk>', 'UNK') + '\n')
+        with codecs.open(ref_dir + "%06d_reference.txt" % i, "w", "utf-8") as f:
+            f.write(" ".join(reference[i]).replace(" <\s> ", "\n") + "\n")
+        with codecs.open(cand_dir + "%06d_candidate.txt" % i, "w", "utf-8") as f:
+            f.write(
+                " ".join(candidate[i]).replace(" <\s> ", "\n").replace("<unk>", "UNK")
+                + "\n"
+            )
 
     # use pyrouge and ROUGE155
     r = pyrouge.Rouge155()
-    r.model_filename_pattern = '#ID#_reference.txt'
-    r.system_filename_pattern = '(\d+)_candidate.txt'
+    r.model_filename_pattern = "#ID#_reference.txt"
+    r.system_filename_pattern = "(\d+)_candidate.txt"
     r.model_dir = ref_dir
     r.system_dir = cand_dir
-    logging.getLogger('global').setLevel(logging.WARNING)
+    logging.getLogger("global").setLevel(logging.WARNING)
     # compute the scores
     rouge_results = r.convert_and_evaluate()
     scores = r.output_to_dict(rouge_results)
     # recall
-    recall = [round(scores["rouge_1_recall"] * 100, 2),
-              round(scores["rouge_2_recall"] * 100, 2),
-              round(scores["rouge_l_recall"] * 100, 2)]
+    recall = [
+        round(scores["rouge_1_recall"] * 100, 2),
+        round(scores["rouge_2_recall"] * 100, 2),
+        round(scores["rouge_l_recall"] * 100, 2),
+    ]
     # precision
-    precision = [round(scores["rouge_1_precision"] * 100, 2),
-                 round(scores["rouge_2_precision"] * 100, 2),
-                 round(scores["rouge_l_precision"] * 100, 2)]
+    precision = [
+        round(scores["rouge_1_precision"] * 100, 2),
+        round(scores["rouge_2_precision"] * 100, 2),
+        round(scores["rouge_l_precision"] * 100, 2),
+    ]
     # f score
-    f_score = [round(scores["rouge_1_f_score"] * 100, 2),
-               round(scores["rouge_2_f_score"] * 100, 2),
-               round(scores["rouge_l_f_score"] * 100, 2)]
+    f_score = [
+        round(scores["rouge_1_f_score"] * 100, 2),
+        round(scores["rouge_2_f_score"] * 100, 2),
+        round(scores["rouge_l_f_score"] * 100, 2),
+    ]
     # print
-    print_log("F_measure: %s Recall: %s Precision: %s\n"
-              % (str(f_score), str(recall), str(precision)))
+    print_log(
+        "F_measure: %s Recall: %s Precision: %s\n"
+        % (str(f_score), str(recall), str(precision))
+    )
 
     return f_score[:], recall[:], precision[:]
 
@@ -145,22 +160,22 @@ def eval_metrics(reference, candidate, label_dict, log_path):
     :return: hamming loss, macro and micro f1, precision and recall.
     """
     # directory for saving sentences
-    ref_dir = log_path + 'reference/'
-    cand_dir = log_path + 'candidate/'
+    ref_dir = log_path + "reference/"
+    cand_dir = log_path + "candidate/"
     # check if there are directories for reference and candidate
     if not os.path.exists(ref_dir):
         os.mkdir(ref_dir)
     if not os.path.exists(cand_dir):
         os.mkdir(cand_dir)
-    ref_file = ref_dir+'reference'
-    cand_file = cand_dir+'candidate'
+    ref_file = ref_dir + "reference"
+    cand_file = cand_dir + "candidate"
 
     # write files
     for i in range(len(reference)):
-        with codecs.open(ref_file+str(i), 'w', 'utf-8') as f:
-            f.write("".join(reference[i])+'\n')
-        with codecs.open(cand_file+str(i), 'w', 'utf-8') as f:
-            f.write("".join(candidate[i])+'\n')
+        with codecs.open(ref_file + str(i), "w", "utf-8") as f:
+            f.write("".join(reference[i]) + "\n")
+        with codecs.open(cand_file + str(i), "w", "utf-8") as f:
+            f.write("".join(candidate[i]) + "\n")
 
     def make_label(l, label_dict):
         """
@@ -184,8 +199,7 @@ def eval_metrics(reference, candidate, label_dict, log_path):
         :return: one-hot arrays of the input label sets
         """
         reference = np.array([make_label(y, label_dict) for y in y_list])
-        candidate = np.array([make_label(y_pre, label_dict)
-                              for y_pre in y_pre_list])
+        candidate = np.array([make_label(y_pre, label_dict) for y_pre in y_pre_list])
         return reference, candidate
 
     def get_one_error(y, candidate, label_dict):
@@ -198,7 +212,7 @@ def eval_metrics(reference, candidate, label_dict, log_path):
         """
         idx = [label_dict.get(c[0].strip().upper(), 0) for c in candidate]
         result = [(y[i, idx[i]] == 1) for i in range(len(idx))]
-        return (1 - np.array(result).mean())
+        return 1 - np.array(result).mean()
 
     def get_metrics(y, y_pre):
         """
@@ -208,26 +222,41 @@ def eval_metrics(reference, candidate, label_dict, log_path):
         :return: scores
         """
         hamming_loss = metrics.hamming_loss(y, y_pre)
-        macro_f1 = metrics.f1_score(y, y_pre, average='macro')
-        macro_precision = metrics.precision_score(y, y_pre, average='macro')
-        macro_recall = metrics.recall_score(y, y_pre, average='macro')
-        micro_f1 = metrics.f1_score(y, y_pre, average='micro')
-        micro_precision = metrics.precision_score(y, y_pre, average='micro')
-        micro_recall = metrics.recall_score(y, y_pre, average='micro')
-        return hamming_loss, \
-               macro_f1, macro_precision, macro_recall, \
-               micro_f1, micro_precision, micro_recall
+        macro_f1 = metrics.f1_score(y, y_pre, average="macro")
+        macro_precision = metrics.precision_score(y, y_pre, average="macro")
+        macro_recall = metrics.recall_score(y, y_pre, average="macro")
+        micro_f1 = metrics.f1_score(y, y_pre, average="micro")
+        micro_precision = metrics.precision_score(y, y_pre, average="micro")
+        micro_recall = metrics.recall_score(y, y_pre, average="micro")
+        return (
+            hamming_loss,
+            macro_f1,
+            macro_precision,
+            macro_recall,
+            micro_f1,
+            micro_precision,
+            micro_recall,
+        )
 
     # prepare the label sets to arrays
     y, y_pre = prepare_label(reference, candidate, label_dict)
     # score computation for a series of metrics
     # one_error = get_one_error(y, candidate, label_dict)
-    hamming_loss, macro_f1, macro_precision, macro_recall, micro_f1, micro_precision, micro_recall = get_metrics(
-        y, y_pre)
-    return {'hamming_loss': hamming_loss,
-            'macro_f1': macro_f1,
-            'macro_precision': macro_precision,
-            'macro_recall': macro_recall,
-            'micro_f1': micro_f1,
-            'micro_precision': micro_precision,
-            'micro_recall': micro_recall}
+    (
+        hamming_loss,
+        macro_f1,
+        macro_precision,
+        macro_recall,
+        micro_f1,
+        micro_precision,
+        micro_recall,
+    ) = get_metrics(y, y_pre)
+    return {
+        "hamming_loss": hamming_loss,
+        "macro_f1": macro_f1,
+        "macro_precision": macro_precision,
+        "macro_recall": macro_recall,
+        "micro_f1": micro_f1,
+        "micro_precision": micro_precision,
+        "micro_recall": micro_recall,
+    }

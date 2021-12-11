@@ -1,15 +1,28 @@
-## [KOBE v2: Towards **K**n**O**wledge-**B**ased p**E**rsonalized Product Description Generation in E-commerce](https://arxiv.org/abs/1903.12457)
-
-**New:** We release **KOBE v2**, a refactored version of the original code with the latest deep learning tools in 2021 and greatly improved the installation, reproducibility, performance, and visualization, in memory of Kobe Bryant.
+## [KOBE v2: Towards Knowledge-Based Personalized Product Description Generation in E-commerce](https://arxiv.org/abs/1903.12457)
 
 [![Unittest](https://img.shields.io/github/workflow/status/THUDM/KOBE/Test)](https://github.com/THUDM/KOBE/actions/workflows/install.yml)
 [![GitHub stars](https://img.shields.io/github/stars/THUDM/KOBE)](https://github.com/THUDM/KOBE/stargazers)
 [![GitHub license](https://img.shields.io/github/license/THUDM/KOBE)](https://github.com/THUDM/KOBE/blob/master/LICENSE)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
-This repo contains code and pre-trained models for KOBE, a sequence-to-sequence based approach for automatically generating product descriptions by leveraging conditional inputs (such as user category)  and incorporating knowledge with retrieval augmented product titles.
+**New:** We release **KOBE v2**, a refactored version of the original code with the latest deep learning tools in 2021 and greatly improved the installation, reproducibility, performance, and visualization, in memory of Kobe Bryant.
+
+This repo contains code and pre-trained models for KOBE, a sequence-to-sequence based approach for automatically generating product descriptions by leveraging conditional inputs, e.g., user category, and incorporating knowledge with retrieval augmented product titles.
 
 Paper accepted at KDD 2019 (Applied Data Science Track). Latest version at [arXiv](https://arxiv.org/abs/1903.12457).
+
+- [KOBE v2: Towards Knowledge-Based Personalized Product Description Generation in E-commerce](#kobe-v2-towards-knowledge-based-personalized-product-description-generation-in-e-commerce)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Dataset](#dataset)
+  - [Training](#training)
+    - [Download preprocessed data](#download-preprocessed-data)
+    - [Start training](#start-training)
+    - [Track training progress](#track-training-progress)
+  - [Generation](#generation)
+  - [Evaluation](#evaluation)
+- [Cite](#cite)
 
 ## Prerequisites
 

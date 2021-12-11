@@ -7,20 +7,20 @@ import time
 from argparse import Namespace
 from collections import OrderedDict, defaultdict
 
+import lr_scheduler as L
+import models
 import numpy as np
+import opts
 import torch
 import torch.nn as nn
 import torch.utils.data
+import utils
 import yaml
+from dataset import load_data
 from torch.nn.init import xavier_uniform_
 from tqdm import tqdm
-
-import lr_scheduler as L
-import models
-import opts
-import utils
-from dataset import load_data
 from utils import misc_utils
+
 
 # build model
 def build_model(checkpoints, config, device):
@@ -85,7 +85,16 @@ def train_model(model, data, optim, epoch, params, config, device, writer):
     train_loader = data["train_loader"]
     log_vars = defaultdict(float)
 
-    for src, tgt, src_len, tgt_len, original_src, original_tgt, knowledge, knowledge_len in train_loader:
+    for (
+        src,
+        tgt,
+        src_len,
+        tgt_len,
+        original_src,
+        original_tgt,
+        knowledge,
+        knowledge_len,
+    ) in train_loader:
         # put the tensors on cuda devices
         src, tgt = src.to(device), tgt.to(device)
         src_len, tgt_len = src_len.to(device), tgt_len.to(device)
@@ -111,10 +120,18 @@ def train_model(model, data, optim, epoch, params, config, device, writer):
                 if epoch > 8:
                     e = epoch - 8
                     return_dict, outputs = model(
-                        src, lengths, dec, targets, knowledge, knowledge_len, teacher_ratio=0.9 ** e
+                        src,
+                        lengths,
+                        dec,
+                        targets,
+                        knowledge,
+                        knowledge_len,
+                        teacher_ratio=0.9 ** e,
                     )
                 else:
-                    return_dict, outputs = model(src, lengths, dec, targets, knowledge, knowledge_len)
+                    return_dict, outputs = model(
+                        src, lengths, dec, targets, knowledge, knowledge_len
+                    )
             else:
                 return_dict, outputs = model(
                     src, lengths, dec, targets, knowledge, knowledge_len
@@ -239,7 +256,16 @@ def eval_model(model, data, params, config, device, writer):
     valid_loader = data["valid_loader"]
     tgt_vocab = data["tgt_vocab"]
 
-    for src, tgt, src_len, tgt_len, original_src, original_tgt, knowledge, knowledge_len in tqdm(valid_loader):
+    for (
+        src,
+        tgt,
+        src_len,
+        tgt_len,
+        original_src,
+        original_tgt,
+        knowledge,
+        knowledge_len,
+    ) in tqdm(valid_loader):
         src = src.to(device)
         src_len = src_len.to(device)
         if config.knowledge:
@@ -248,10 +274,17 @@ def eval_model(model, data, params, config, device, writer):
         with torch.no_grad():
             if config.beam_size > 1:
                 samples, alignment = model.beam_sample(
-                    src, src_len, knowledge, knowledge_len, beam_size=config.beam_size, eval_=False
+                    src,
+                    src_len,
+                    knowledge,
+                    knowledge_len,
+                    beam_size=config.beam_size,
+                    eval_=False,
                 )
             else:
-                samples, alignment = model.sample(src, src_len, knowledge, knowledge_len)
+                samples, alignment = model.sample(
+                    src, src_len, knowledge, knowledge_len
+                )
 
         candidate += [tgt_vocab.convertToLabels(s, utils.EOS) for s in samples]
         source += original_src
