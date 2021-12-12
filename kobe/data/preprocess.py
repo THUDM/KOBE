@@ -3,6 +3,7 @@ import json
 import os
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
+from typing import Tuple
 
 import sentencepiece as spm
 import webdataset as wds
@@ -44,15 +45,16 @@ def preprocess_raw_example(
     rawe: RawExample,
     tokenizer: spm.SentencePieceProcessor,
     cond_tokenizer: spm.SentencePieceProcessor,
-) -> Example:
+) -> Tuple[str, Example]:
 
-    return Example(
+    e = Example(
         title_token_ids=tokenizer.EncodeAsIds(rawe.title),
         description_token_ids=tokenizer.EncodeAsIds(rawe.description),
         condition_token_ids=cond_tokenizer.EncodeAsIds(rawe.condition),
         fact_token_ids=tokenizer.EncodeAsIds(rawe.fact),
         description=rawe.description,
     )
+    return hashlib.sha1(json.dumps(e.__dict__).encode()).hexdigest(), e
 
 
 def preprocess_raw(
@@ -81,12 +83,8 @@ def preprocess_raw(
     )
     # store the processed samples
     with wds.TarWriter(output) as dst:
-        for e in tqdm(examples):
-            d_str = json.dumps(e.__dict__)
-            sample = {
-                "__key__": hashlib.sha1(d_str.encode()).hexdigest(),
-                "json": d_str,
-            }
+        for key, e in tqdm(examples):
+            sample = {"__key__": key, "json": e.__dict__}
             dst.write(sample)
 
 
