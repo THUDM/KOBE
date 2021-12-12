@@ -71,6 +71,13 @@ class EncodedBatch(TensorDict):
     context_encodings_mask: torch.Tensor
 
 
+@dataclass
+class DecodedBatch:
+    loss: float
+    generated: List[str]
+    descriptions: List[str]
+
+
 def from_processed(url: str):
     urls = sorted(glob.glob(url))
     return wds.WebDataset(urls).decode().map(lambda d: Example(**d["json"]))

@@ -5,6 +5,7 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from typing import Tuple
 
+import numpy as np
 import sentencepiece as spm
 import webdataset as wds
 from joblib import Parallel, delayed
@@ -81,6 +82,7 @@ def preprocess_raw(
         delayed(preprocess_raw_example)(rawe, text_tokenizer, cond_tokenizer)
         for rawe in tqdm(raw_examples)
     )
+    np.random.shuffle(examples)
     # store the processed samples
     with wds.TarWriter(output) as dst:
         for key, e in tqdm(examples):

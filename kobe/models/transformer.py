@@ -107,13 +107,6 @@ class Encoder(nn.Module):
             ),
         }[mode]
 
-    def configure_optimizers(self, lr: float):
-        optimizer = optim.AdamW(self.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-9)
-        scheduler = optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=0.1, total_iters=16000
-        )
-        return [optimizer], [scheduler]
-
 
 class Decoder(nn.Module):
     @staticmethod
@@ -157,21 +150,13 @@ class Decoder(nn.Module):
         )
         return self.output(outputs)
 
-    def predict(
-        self,
-        batch: Batched,
-        encoded_batch: EncodedBatch,
-        logits: torch.Tensor,
-        beam_size: int = 0,
-    ):
+    def predict(self, encoded_batch: EncodedBatch, beam_size: int):
         if beam_size == 0:
-            return self.greedy_decode(batch, encoded_batch, logits)
+            return self.greedy_decode(encoded_batch)
         else:
             raise NotImplementedError
 
-    def greedy_decode(
-        self, batch: Batched, encoded_batch: EncodedBatch, logits: torch.Tensor
-    ):
+    def greedy_decode(self, encoded_batch: EncodedBatch):
         batch_size = encoded_batch.context_encodings.shape[1]
         tgt = self.embedding(torch.tensor([BOS_ID] * batch_size).unsqueeze(dim=0))
         tgt_mask = Decoder.generate_square_subsequent_mask(self.max_seq_len, tgt.device)

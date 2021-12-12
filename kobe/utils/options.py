@@ -9,7 +9,8 @@ def add_options(parser: ArgumentParser):
     parser.add_argument("--train-data", default="data-v2/processed/train-*.tar", type=str)
     parser.add_argument("--valid-data", default="data-v2/processed/valid-*.tar", type=str)
     parser.add_argument("--test-data", default="data-v2/processed/test-*.tar", type=str)
-    parser.add_argument("--vocab-path", default="data-v2/vocab.text.model", type=str)
+    parser.add_argument("--text-vocab-path", default="data-v2/vocab.text.model", type=str)
+    parser.add_argument("--cond-vocab-path", default="data-v2/vocab.cond.model", type=str)
     parser.add_argument("--num-workers", default=8, help="Number of data loaders", type=int)
 
     # Model
@@ -36,7 +37,6 @@ def add_options(parser: ArgumentParser):
     parser.add_argument("--test", action="store_true", help="only do evaluation")
     parser.add_argument("--load-file", required=False, type=str)
     parser.add_argument("--beam-size", default=0, type=int)
-    parser.add_argument("--temperature", default=1, type=float)
 
     # fmt: on
 
