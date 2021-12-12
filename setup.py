@@ -18,6 +18,7 @@ setup(
         "pre-commit>=2.15.0",
         "pytest>=6.2.4",
         "pytorch-lightning>=1.5.4",
+        "sacrebleu>=2.0.0",
         "sentencepiece>=0.1.96",
         "scipy>=1.7.3",
         "torch>=1.10",
