@@ -126,3 +126,4 @@ dmypy.json
 data-v2/
 experiments*/
 .vscode/
+wandb/

@@ -3,14 +3,12 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 from cached_property import cached_property
-from torch import optim
 from torch.nn.modules.transformer import (
     TransformerDecoder,
     TransformerDecoderLayer,
     TransformerEncoder,
     TransformerEncoderLayer,
 )
-from webdataset.iterators import batched
 
 from kobe.data.dataset import Batched, EncodedBatch
 from kobe.data.vocab import BOS_ID, EOS_ID, PAD_ID
@@ -146,7 +144,7 @@ class Decoder(nn.Module):
             tgt_mask=tgt_mask,
             tgt_key_padding_mask=batch.description_token_ids_mask,
             memory=encoded_batch.context_encodings,
-            memory_key_padding_mask=encoded_batch.context_encodings,
+            memory_key_padding_mask=encoded_batch.context_encodings_mask,
         )
         return self.output(outputs)
 
@@ -158,7 +156,11 @@ class Decoder(nn.Module):
 
     def greedy_decode(self, encoded_batch: EncodedBatch):
         batch_size = encoded_batch.context_encodings.shape[1]
-        tgt = self.embedding(torch.tensor([BOS_ID] * batch_size).unsqueeze(dim=0))
+        tgt = self.embedding(
+            torch.tensor(
+                [BOS_ID] * batch_size, device=encoded_batch.context_encodings.device
+            ).unsqueeze(dim=0)
+        )
         tgt_mask = Decoder.generate_square_subsequent_mask(self.max_seq_len, tgt.device)
         pred_all = []
         for idx in range(self.max_seq_len):
@@ -170,13 +172,13 @@ class Decoder(nn.Module):
             )
             logits = self.output(outputs[-1])
 
-            pred_step = logits.argmax().tolist()
+            pred_step = logits.argmax(dim=1).tolist()
             for b in range(batch_size):
                 if pred_all and pred_all[-1][b].item() == EOS_ID:
                     pred_step[b] = PAD_ID
             if all([pred == PAD_ID for pred in pred_step]):
                 break
-            pred_step = torch.tensor(pred_step)
+            pred_step = torch.tensor(pred_step, device=tgt.device)
             pred_all.append(pred_step)
 
             if idx < self.max_seq_len - 1:

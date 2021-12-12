@@ -74,6 +74,7 @@ class EncodedBatch(TensorDict):
 @dataclass
 class DecodedBatch:
     loss: float
+    acc: float
     generated: List[str]
     descriptions: List[str]
 
@@ -239,9 +240,11 @@ if __name__ == "__main__":
         batch_size=32,
         num_workers=8,
     )
-    dm.setup(stage="fit")
-    for batch in dm.val_dataloader():
-        print(batch)
-        import pdb
+    dm.setup()
+    max_len = 0
+    from tqdm import tqdm
 
-        pdb.set_trace()
+    tqdm_iter = tqdm(dm.test_dataloader())
+    for batch in tqdm_iter:
+        max_len = max(max_len, batch.cond_title_fact_token_ids.shape[0])
+        tqdm_iter.set_description(f"max len = {max_len}")

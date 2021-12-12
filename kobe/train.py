@@ -29,7 +29,7 @@ if __name__ == "__main__":
         args.train_data,
         args.valid_data,
         args.test_data,
-        args.vocab_path,
+        args.text_vocab_path,
         args.max_seq_len,
         args.batch_size,
         args.num_workers,
@@ -53,7 +53,6 @@ if __name__ == "__main__":
         auto_select_gpus=True,
         gradient_clip_val=args.grad_clip,
         callbacks=callbacks,
-        check_val_every_n_epoch=10,
     )
 
     if not args.test:
