@@ -125,11 +125,6 @@ class tensor2tensor(nn.Module):
             self.criterion.cuda()
         self.compute_score = nn.Linear(config.hidden_size, config.tgt_vocab_size)
 
-        # Use rl or not. Should specify a reward provider. Not available yet in this framework.
-        # if config.rl:
-        # self.bleu_scorer = bleu.Scorer(pad=0, eos=3, unk=1)
-        # self.reward_provider = CTRRewardProvider(config.ctr_reward_provider_path)
-        # self.tgt_vocab = tgt_vocab
         self.padding_idx = tgt_padding_idx
 
     def compute_loss(self, scores, targets):
@@ -142,87 +137,6 @@ class tensor2tensor(nn.Module):
         scores = scores.contiguous().view(-1, scores.size(2))  # [len*batch, vocab]
         loss = self.criterion(scores, targets.contiguous().view(-1))
         return loss
-
-    def compute_reward(self, contexts, tgt):
-        """
-        Reward computation
-        :param contexts: source contexts
-        :param tgt: target
-        :return: loss, rewards, baselines and entropy
-        """
-        sample_ids, probs, entropy = self.rl_sample(contexts)
-        sample_ids = sample_ids
-        probs = probs.t()
-        for i, sample_id in enumerate(sample_ids):
-            x = sample_id.index(3) + 1 if 3 in sample_id else len(sample_id)
-            probs[i][x:] = 0
-            probs[i] /= x  # length norm
-        tgt = tgt.tolist()
-        # rewards = self.reward_func_batch(sample_ids, tgt)
-        rewards = []
-        for y, y_hat in zip(sample_ids, tgt):
-            rewards.append(self.reward_func(y, y_hat))
-        rewards = torch.tensor(rewards).unsqueeze(1).expand_as(probs).cuda()
-
-        if self.config.baseline == "self_critic":
-            # for baseline
-            greedy_pred, _ = self.greedy_sample(contexts)
-            # baseline with bleu or CTR provider. temporal
-            # baselines = self.reward_func_batch(greedy_pred, tgt)
-            baselines = []
-            for y, y_hat in zip(greedy_pred, tgt):
-                baselines.append(self.reward_func(y, y_hat))
-            baselines = torch.tensor(baselines).unsqueeze(1).expand_as(probs).cuda()
-            rewards = rewards - baselines
-
-        loss = -probs * rewards
-
-        return loss, rewards, baselines, entropy
-
-    def reward_func(self, y, y_hat, func="mlc"):
-        """
-        Define your own reward function. Predefined functions are mlc, bleu, rouge.
-        :param y: target
-        :param y_hat: prediction
-        :param func: reward function
-        :return: reward
-        """
-        # hypo = self.tgt_vocab.convertToLabels(y, utils.EOS)
-        # target = self.tgt_vocab.convertToLabels(y_hat, utils.EOS)
-        # reward = self.reward_provider.reward_fn(hypo, target)
-        if func == "mlc":
-            y_true = np.zeros(self.config.tgt_vocab_size - 4)
-            y_pre = np.zeros(self.config.tgt_vocab_size - 4)
-            for i in y:
-                if i == 3:
-                    break
-                else:
-                    if i > 3:
-                        y_true[i - 4] = 1
-            for i in y_hat:
-                if i == 3:
-                    break
-                else:
-                    if i > 3:
-                        y_pre[i - 4] = 1
-            if self.config.reward == "f1":
-                reward = utils.metrics.f1_score(
-                    np.array([y_true]), np.array([y_pre]), average="micro"
-                )
-            elif self.config.reward == "hamming_loss":
-                reward = metrics.hamming_loss(np.array([y_true]), np.array([y_pre]))
-        return reward
-
-    # def reward_func_batch(self, ys, y_hats):
-    #     reward = []
-    #     for hypo, target in zip(ys, y_hats):
-    #         self.bleu_scorer.reset()
-    #         self.bleu_scorer.add(torch.IntTensor(hypo), torch.IntTensor(target))
-    #         reward.append(self.bleu_scorer.score())
-    #     # hypos = [self.tgt_vocab.convertToLabels(y, utils.EOS) for y in ys]
-    #     # targets = [self.tgt_vocab.convertToLabels(y_hat, utils.EOS) for y_hat in y_hats]
-    #     # reward = self.reward_provider.reward_fn_batched(hypos, targets)
-    #     return reward
 
     def greedy_sample(self, contexts):
         """
@@ -285,8 +199,6 @@ class tensor2tensor(nn.Module):
             outputs.append(predicted)
         sample_ids = torch.stack(outputs).t().tolist()
         probs = torch.stack(probs).squeeze()  # [max_tgt_len, batch]
-        # probs = probs[:, reverse_indices]
-        # entropy = entropy[reverse_indices]
 
         return sample_ids, probs, entropy
 
@@ -329,22 +241,6 @@ class tensor2tensor(nn.Module):
         models.transformer.init_state(
             self.decoder, src, contexts, self.decoder.num_layers
         )
-
-        # printing for debugging
-        # self.decoder.init_state(src, contexts)
-        # print(src.device, id(self.decoder.init_state))
-        # print(src.device, id(self.decoder))
-        # print(src.device, self.decoder.state['cache'])
-        # if self.config.rl:
-        #     rl_loss, rewards, baselines, entropy = self.compute_reward(
-        #         contexts, targets.clone())
-        #     rl_loss = rl_loss
-        #     return_dict['rl_loss'] = rl_loss.sum(dim=1).mean()
-        #     return_dict['reward_mean'] = rewards[:, 0].mean()
-        #     return_dict['greedy_mean'] = baselines[:, 0].mean()
-        #     return_dict['sample_mean'] = return_dict['reward_mean'] + \
-        #         return_dict['greedy_mean']
-        #     return_dict['entropy'] = entropy.mean()
 
         if self.config.positional:
             outputs, attn_weights = self.decoder(dec, contexts)  # [len, batch, size]
