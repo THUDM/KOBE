@@ -10,6 +10,7 @@ setup(
     packages=find_packages(exclude=[]),
     install_requires=[
         "black>=21.10b0",
+        "cached_property>=1.5.2",
         "gdown>=4.2.0",
         "isort>=5.8.0",
         "joblib>=1.0.1",

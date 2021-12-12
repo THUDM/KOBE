@@ -6,8 +6,11 @@ import pytorch_lightning as pl
 import sentencepiece as spm
 import torch
 import webdataset as wds
+from torch.functional import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data.dataloader import DataLoader
+
+from kobe.utils import helpers
 
 
 @dataclass
@@ -51,6 +54,8 @@ class Batched(TensorDict):
     # Knowledge Incorporation
     fact_token_ids: torch.Tensor
     fact_token_ids_mask: torch.Tensor
+    title_fact_token_ids: torch.Tensor
+    title_fact_token_ids_mask: torch.Tensor
     # Attribute Fusion + Knowledge Incorporation
     cond_title_fact_token_ids: torch.Tensor
     cond_title_fact_token_ids_mask: torch.Tensor
@@ -58,6 +63,12 @@ class Batched(TensorDict):
     description_token_ids: torch.Tensor
     description_token_ids_mask: torch.Tensor
     descriptions: List[str]
+
+
+@dataclass
+class EncodedBatch(TensorDict):
+    context_encodings: torch.Tensor
+    context_encodings_mask: torch.Tensor
 
 
 def from_processed(url: str):
@@ -109,6 +120,17 @@ def get_collate_fn(text_vocab_size: int, max_seq_length: int):
                 for e in examples
             ]
         )
+        title_fact_token_ids = pad_sequence(
+            [
+                torch.tensor(
+                    ([BOS_ID] + e.title_token_ids + [EOS_ID] + e.fact_token_ids)[
+                        : max_seq_length - 1
+                    ]
+                    + [EOS_ID]
+                )
+                for e in examples
+            ]
+        )
         cond_title_fact_token_ids = pad_sequence(
             [
                 torch.tensor(
@@ -136,10 +158,12 @@ def get_collate_fn(text_vocab_size: int, max_seq_length: int):
             fact_token_ids_mask=(fact_token_ids == 0).T,
             cond_title_token_ids=cond_title_token_ids,
             cond_title_token_ids_mask=(cond_title_token_ids == 0).T,
-            description_token_ids=description_token_ids,
-            description_token_ids_mask=(description_token_ids == 0).T,
+            title_fact_token_ids=title_fact_token_ids,
+            title_fact_token_ids_mask=(title_fact_token_ids == 0).T,
             cond_title_fact_token_ids=cond_title_fact_token_ids,
             cond_title_fact_token_ids_mask=(cond_title_fact_token_ids == 0).T,
+            description_token_ids=description_token_ids,
+            description_token_ids_mask=(description_token_ids == 0).T,
             descriptions=descriptions,
         )
 
@@ -164,9 +188,7 @@ class KobeDataModule(pl.LightningDataModule):
         self.max_seq_length = max_seq_length
         self.batch_size = batch_size
         self.num_workers = num_workers
-        text_tokenizer = spm.SentencePieceProcessor()
-        text_tokenizer.Load(vocab_path)
-        self.text_vocab_size = len(text_tokenizer)
+        self.text_vocab_size = helpers.get_vocab_size(vocab_path)
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
