@@ -174,7 +174,7 @@ class Decoder(nn.Module):
 
             pred_step = logits.argmax(dim=1).tolist()
             for b in range(batch_size):
-                if pred_all and pred_all[-1][b].item() == EOS_ID:
+                if pred_all and pred_all[-1][b].item() in [EOS_ID, PAD_ID]:
                     pred_step[b] = PAD_ID
             if all([pred == PAD_ID for pred in pred_step]):
                 break

@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # fmt: off
     parser.add_argument("--input", nargs="+", required=True)
     parser.add_argument("--vocab-file", type=str, required=True)
-    parser.add_argument("--vocab-size", type=int, default=30000)
+    parser.add_argument("--vocab-size", type=int, default=5000)
     parser.add_argument("--algo", type=str, default="bpe", choices=["bpe", "word"])
     # fmt: on
     args = parser.parse_args()

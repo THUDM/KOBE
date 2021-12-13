@@ -18,7 +18,7 @@ def add_options(parser: ArgumentParser):
     parser.add_argument("--nhead", default=8, type=int)
     parser.add_argument("--num-encoder-layers", default=6, type=int)
     parser.add_argument("--num-decoder-layers", default=2, type=int)
-    parser.add_argument("--max-seq-len", default=192, type=int)
+    parser.add_argument("--max-seq-len", default=256, type=int)
     parser.add_argument("--mode", default="baseline", type=str, choices=[
         helpers.BASELINE, helpers.KOBE_ATTRIBUTE, helpers.KOBE_KNOWLEDGE, helpers.KOBE_FULL])
 

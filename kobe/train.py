@@ -19,7 +19,7 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    wandb_logger = WandbLogger(name=args.name, project="kobe", log_model=True)
+    wandb_logger = WandbLogger(name=args.name, project="kobe-v2", log_model=True)
     # overwrite specified args for hyperparam sweeping
     for k, v in wandb_logger.experiment.config.items():
         setattr(args, k, v)
