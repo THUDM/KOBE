@@ -1,3 +1,4 @@
+import math
 from typing import Tuple
 
 import torch
@@ -16,25 +17,40 @@ from kobe.utils import helpers
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
-        super().__init__()
-        self.dropout = nn.Dropout(p=dropout)
-        self.layernorm = nn.LayerNorm(d_model)
-        self.pe = nn.Embedding(max_len, d_model)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def __init__(self, dropout, dim, max_len=5000):
         """
-        Args:
-            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+        initialization of required variables and functions
+        :param dropout: dropout probability
+        :param dim: hidden size
+        :param max_len: maximum length
         """
-        seq_length = x.shape[0]
-        position_ids = (
-            torch.arange(seq_length, device=x.device).unsqueeze(1).expand(x.shape[:2])
+        super(PositionalEncoding, self).__init__()
+        # positional encoding initialization
+        pe = torch.zeros(max_len, dim)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        # term to divide
+        div_term = torch.exp(
+            (torch.arange(0, dim, 2, dtype=torch.float) * -(math.log(10000.0) / dim))
         )
-        pe = self.pe(position_ids)
-        x = x + pe
-        x = self.layernorm(x)
-        return self.dropout(x)
+        # sinusoidal positional encoding
+        pe[:, 0::2] = torch.sin(position.float() * div_term)
+        pe[:, 1::2] = torch.cos(position.float() * div_term)
+        pe = pe.unsqueeze(1)
+        self.register_buffer("pe", pe)
+        self.dropout = nn.Dropout(p=dropout)
+        self.dim = dim
+
+    def forward(self, emb):
+        """
+        create positional encoding
+        :param emb: word embedding
+        :param step: step for decoding in inference
+        :return: positional encoding representation
+        """
+        emb *= math.sqrt(self.dim)
+        emb = emb + self.pe[: emb.size(0)]  # [len, batch, size]
+        emb = self.dropout(emb)
+        return emb
 
 
 class Encoder(nn.Module):
@@ -64,11 +80,13 @@ class Encoder(nn.Module):
         self.d_model = d_model
         self.max_seq_len = max_seq_len
         self.input_embedding = nn.Embedding(vocab_size, d_model)
-        self.pos_encoder = PositionalEncoding(d_model, dropout, max_seq_len)
+        self.pos_encoder = PositionalEncoding(dropout, d_model)
         encoder_layer = TransformerEncoderLayer(
             d_model, nhead, d_model * 4, dropout, norm_first=True
         )
-        self.transformer = TransformerEncoder(encoder_layer, num_layers)
+        self.encoder = TransformerEncoder(
+            encoder_layer, num_layers, nn.LayerNorm(d_model)
+        )
         self.mode = mode
 
     @cached_property
@@ -79,7 +97,7 @@ class Encoder(nn.Module):
         src, src_key_padding_mask = Encoder._get_input(batched, self.mode)
         src = self.input_embedding(src)
         src = self.pos_encoder(src)
-        token_encodings = self.transformer.forward(
+        token_encodings = self.encoder.forward(
             src=src, src_key_padding_mask=src_key_padding_mask
         )
         return EncodedBatch(
@@ -130,14 +148,18 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.max_seq_len = max_seq_len
         self.embedding = nn.Embedding(vocab_size, d_model)
+        self.pos_encoder = PositionalEncoding(dropout, d_model)
         decoder_layer = TransformerDecoderLayer(
             d_model, nhead, 4 * d_model, dropout, norm_first=True
         )
-        self.decoder = TransformerDecoder(decoder_layer, num_layers)
+        self.decoder = TransformerDecoder(
+            decoder_layer, num_layers, nn.LayerNorm(d_model)
+        )
         self.output = nn.Linear(d_model, vocab_size)
 
     def forward(self, batch: Batched, encoded_batch: EncodedBatch) -> torch.Tensor:
         tgt = self.embedding(batch.description_token_ids)
+        tgt = self.pos_encoder(tgt)
         tgt_mask = Decoder.generate_square_subsequent_mask(tgt.shape[0], tgt.device)
         outputs = self.decoder(
             tgt=tgt,
@@ -161,6 +183,7 @@ class Decoder(nn.Module):
                 [BOS_ID] * batch_size, device=encoded_batch.context_encodings.device
             ).unsqueeze(dim=0)
         )
+        tgt = self.pos_encoder(tgt)
         tgt_mask = Decoder.generate_square_subsequent_mask(self.max_seq_len, tgt.device)
         pred_all = []
         for idx in range(self.max_seq_len):
@@ -182,7 +205,7 @@ class Decoder(nn.Module):
             pred_all.append(pred_step)
 
             if idx < self.max_seq_len - 1:
-                tgt_step = self.embedding(pred_step.unsqueeze(dim=0))
+                tgt_step = self.pos_encoder(self.embedding(pred_step.unsqueeze(dim=0)))
                 tgt = torch.cat([tgt, tgt_step], dim=0)
 
         preds = torch.stack(pred_all)
@@ -195,10 +218,6 @@ class Decoder(nn.Module):
           float('-inf').
         Unmasked positions are filled with float(0.0).
         """
-        mask = (torch.triu(torch.ones(sz, sz, device=device)) == 1).transpose(0, 1)
-        mask = (
-            mask.float()
-            .masked_fill(mask == 0, float("-inf"))
-            .masked_fill(mask == 1, float(0.0))
+        return torch.triu(
+            torch.full((sz, sz), float("-inf"), device=device), diagonal=1
         )
-        return mask

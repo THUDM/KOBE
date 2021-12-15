@@ -7,9 +7,11 @@ import torch
 import torch.nn as nn
 from sacrebleu.metrics import BLEU
 from torch import optim
+from torch.nn.init import xavier_uniform_
 
 import wandb
 from kobe.data.dataset import Batched, DecodedBatch
+from kobe.models.scheduler import WarmupDecayLR
 from kobe.models.transformer import Decoder, Encoder
 from kobe.utils import helpers
 
@@ -40,6 +42,12 @@ class KobeModel(pl.LightningModule):
         self.bleu = BLEU()
         self.vocab = spm.SentencePieceProcessor()
         self.vocab.Load(args.text_vocab_path)
+        self._reset_parameters()
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                xavier_uniform_(p)
 
     def _tokenwise_loss_acc(
         self, logits: torch.Tensor, batch: Batched
@@ -54,6 +62,7 @@ class KobeModel(pl.LightningModule):
         encoded = self.encoder.forward(batch)
         logits = self.decoder.forward(batch, encoded)
         loss, acc = self._tokenwise_loss_acc(logits, batch)
+        self.lr_schedulers().step()
         self.log("train/loss", loss.item())
         self.log("train/acc", acc)
         return loss
@@ -102,10 +111,6 @@ class KobeModel(pl.LightningModule):
         self._shared_epoch_end(outputs, "test")
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(
-            self.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-9
-        )
-        scheduler = optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=0.1, total_iters=16000
-        )
+        optimizer = optim.AdamW(self.parameters(), lr=self.lr, betas=(0.9, 0.999))
+        scheduler = WarmupDecayLR(optimizer, warmup_steps=10000)
         return [optimizer], [scheduler]
