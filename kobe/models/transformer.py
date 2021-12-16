@@ -158,13 +158,13 @@ class Decoder(nn.Module):
         self.output = nn.Linear(d_model, vocab_size)
 
     def forward(self, batch: Batched, encoded_batch: EncodedBatch) -> torch.Tensor:
-        tgt = self.embedding(batch.description_token_ids)
+        tgt = self.embedding(batch.description_token_ids[:-1])
         tgt = self.pos_encoder(tgt)
         tgt_mask = Decoder.generate_square_subsequent_mask(tgt.shape[0], tgt.device)
         outputs = self.decoder(
             tgt=tgt,
             tgt_mask=tgt_mask,
-            tgt_key_padding_mask=batch.description_token_ids_mask,
+            tgt_key_padding_mask=batch.description_token_ids_mask[:, :-1],
             memory=encoded_batch.context_encodings,
             memory_key_padding_mask=encoded_batch.context_encodings_mask,
         )
@@ -193,6 +193,7 @@ class Decoder(nn.Module):
             )
             logits = self.output(outputs[-1])
 
+            # pred_step = [helpers.top_k_top_p_sampling(logits[i], top_p=0.95) for i in range(batch_size)]
             pred_step = logits.argmax(dim=1).tolist()
             for b in range(batch_size):
                 if pred_all and pred_all[-1][b].item() in [EOS_ID, PAD_ID]:

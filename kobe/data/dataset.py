@@ -79,9 +79,17 @@ class DecodedBatch:
     descriptions: List[str]
 
 
-def from_processed(url: str):
+def from_processed(url: str, train=False):
     urls = sorted(glob.glob(url))
-    return wds.WebDataset(urls).decode().map(lambda d: Example(**d["json"]))
+    if train:
+        return (
+            wds.WebDataset(urls)
+            .shuffle(size=10000000, initial=100000)
+            .decode()
+            .map(lambda d: Example(**d["json"]))
+        )
+    else:
+        return list(wds.WebDataset(urls).decode().map(lambda d: Example(**d["json"])))
 
 
 def get_collate_fn(text_vocab_size: int, max_seq_length: int):
@@ -200,7 +208,7 @@ class KobeDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
-            self.train = from_processed(self.train_data)
+            self.train = from_processed(self.train_data, train=True)
             self.valid = from_processed(self.valid_data)
         if stage == "test" or stage is None:
             self.test = from_processed(self.test_data)
@@ -233,8 +241,8 @@ class KobeDataModule(pl.LightningDataModule):
 if __name__ == "__main__":
     dm = KobeDataModule(
         train_data="data-v2/processed/train-*.tar",
-        valid_data="data-v2/processed/valid-*.tar",
-        test_data="data-v2/processed/test-*.tar",
+        valid_data="data-v2/processed/valid.tar",
+        test_data="data-v2/processed/test.tar",
         vocab_path="data-v2/vocab.text.model",
         max_seq_length=512,
         batch_size=32,

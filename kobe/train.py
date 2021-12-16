@@ -53,6 +53,7 @@ if __name__ == "__main__":
         auto_select_gpus=True,
         gradient_clip_val=args.grad_clip,
         callbacks=callbacks,
+        reload_dataloaders_every_n_epochs=1,
     )
 
     if not args.test:

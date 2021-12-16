@@ -38,7 +38,10 @@ class KobeModel(pl.LightningModule):
             dropout=args.dropout,
         )
         self.lr = args.lr
-        self.loss = nn.CrossEntropyLoss(reduction="none")
+        self.d_model = args.d_model
+        self.loss = nn.CrossEntropyLoss(
+            reduction="mean", ignore_index=0, label_smoothing=0.1
+        )
         self.bleu = BLEU()
         self.vocab = spm.SentencePieceProcessor()
         self.vocab.Load(args.text_vocab_path)
@@ -53,10 +56,10 @@ class KobeModel(pl.LightningModule):
         self, logits: torch.Tensor, batch: Batched
     ) -> Tuple[torch.Tensor, float]:
         unmask = ~batch.description_token_ids_mask.T[1:]
-        unmasked_logits = logits[:-1][unmask]
+        unmasked_logits = logits[unmask]
         unmasked_targets = batch.description_token_ids[1:][unmask]
         acc = helpers.accuracy(unmasked_logits, unmasked_targets)
-        return self.loss(unmasked_logits, unmasked_targets).mean(), acc
+        return self.loss(logits.transpose(1, 2), batch.description_token_ids[1:]), acc
 
     def training_step(self, batch: Batched, batch_idx: int):
         encoded = self.encoder.forward(batch)
@@ -121,6 +124,6 @@ class KobeModel(pl.LightningModule):
         self._shared_epoch_end(outputs, "test")
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=self.lr, betas=(0.9, 0.999))
-        scheduler = WarmupDecayLR(optimizer, warmup_steps=10000)
+        optimizer = optim.AdamW(self.parameters(), lr=self.lr, betas=(0.9, 0.98))
+        scheduler = WarmupDecayLR(optimizer, warmup_steps=10000, d_model=self.d_model)
         return [optimizer], [scheduler]
