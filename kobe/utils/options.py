@@ -28,7 +28,7 @@ def add_options(parser: ArgumentParser):
     parser.add_argument("--grad-clip", default=1.0, type=float, help="clip threshold of gradients")
     parser.add_argument("--epochs", default=300, type=int, help="number of epochs to train")
     parser.add_argument("--patience", default=100, type=int, help="early stopping patience")
-    parser.add_argument("--lr", default=0.001, type=float, help="learning rate")
+    parser.add_argument("--lr", default=0.25, type=float, help="learning rate")
     parser.add_argument("--dropout", default=0.1, type=float, help="dropout rate")
     parser.add_argument("--batch-size", default=64, type=int)
     parser.add_argument("--seed", default=42, type=int)

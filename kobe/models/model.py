@@ -96,13 +96,23 @@ class KobeModel(pl.LightningModule):
 
         generated = [" ".join(g) for o in outputs for g in o.generated]
         references = [" ".join(g) for o in outputs for g in o.descriptions]
-        bleu = self.bleu.corpus_score(generated, [references])
-        self.log(f"{prefix}/bleu", bleu.score)
+
+        def bleu_with_trunc_length(max_char_len: int):
+            trunc_generated = [
+                " ".join(g[:max_char_len]) for o in outputs for g in o.generated
+            ]
+            return self.bleu.corpus_score(trunc_generated, [references]).score
+
+        for max_char_len in range(32, 257, 32):
+            self.log(
+                f"{prefix}/bleu_{max_char_len}", bleu_with_trunc_length(max_char_len)
+            )
+        self.log(f"{prefix}/bleu", bleu_with_trunc_length(150))
 
         columns = ["Generated", "Reference"]
         data = list(zip(generated[:256:16], references[:256:16]))
         table = wandb.Table(data=data, columns=columns)
-        self.logger.experiment.log({f"{prefix}/examples": table})
+        self.logger.experiment.log({f"examples/{prefix}": table})
 
     def validation_epoch_end(self, outputs):
         self._shared_epoch_end(outputs, "val")

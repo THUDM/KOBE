@@ -178,17 +178,15 @@ class Decoder(nn.Module):
 
     def greedy_decode(self, encoded_batch: EncodedBatch):
         batch_size = encoded_batch.context_encodings.shape[1]
-        tgt = self.embedding(
-            torch.tensor(
-                [BOS_ID] * batch_size, device=encoded_batch.context_encodings.device
-            ).unsqueeze(dim=0)
-        )
-        tgt = self.pos_encoder(tgt)
+        tgt = torch.tensor(
+            [BOS_ID] * batch_size, device=encoded_batch.context_encodings.device
+        ).unsqueeze(dim=0)
         tgt_mask = Decoder.generate_square_subsequent_mask(self.max_seq_len, tgt.device)
         pred_all = []
         for idx in range(self.max_seq_len):
+            tgt_emb = self.pos_encoder(self.embedding(tgt))
             outputs = self.decoder(
-                tgt,
+                tgt_emb,
                 tgt_mask=tgt_mask[: idx + 1, : idx + 1],
                 memory=encoded_batch.context_encodings,
                 memory_key_padding_mask=encoded_batch.context_encodings_mask,
@@ -205,7 +203,7 @@ class Decoder(nn.Module):
             pred_all.append(pred_step)
 
             if idx < self.max_seq_len - 1:
-                tgt_step = self.pos_encoder(self.embedding(pred_step.unsqueeze(dim=0)))
+                tgt_step = pred_step.unsqueeze(dim=0)
                 tgt = torch.cat([tgt, tgt_step], dim=0)
 
         preds = torch.stack(pred_all)
