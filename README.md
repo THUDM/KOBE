@@ -5,7 +5,7 @@
 [![GitHub license](https://img.shields.io/github/license/THUDM/KOBE)](https://github.com/THUDM/KOBE/blob/master/LICENSE)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
-**New:** We release **KOBE v2**, a refactored version of the original code with the latest deep learning tools in 2021 and greatly improved the installation, reproducibility, performance, and visualization, in memory of Kobe Bryant.
+**New:** We release **KOBE v2**, a refactored version of the original code with the latest deep learning tools in 2021 and greatly improved installation, reproducibility, performance, and visualization, in memory of Kobe Bryant.
 
 This repo contains code and pre-trained models for KOBE, a sequence-to-sequence based approach for automatically generating product descriptions by leveraging conditional inputs, e.g., user category, and incorporating knowledge with retrieval augmented product titles.
 
@@ -16,13 +16,13 @@ Paper accepted at KDD 2019 (Applied Data Science Track). Latest version at [arXi
 - [Getting Started](#getting-started)
   - [Installation](#installation)
   - [Dataset](#dataset)
+- [Preprocessing](#preprocessing)
+  - [Build vocabulary](#build-vocabulary)
+  - [Tokenization](#tokenization)
 - [Experiments](#experiments)
   - [Visualization with WandB](#visualization-with-wandb)
   - [Training your own KOBE](#training-your-own-kobe)
-  - [Testing KOBE](#testing-kobe)
-- [Preprocessing](#preprocessing)
-  - [Build vocabulary](#build-vocabulary)
-  - [Preprocessing](#preprocessing-1)
+  - [Evaluating KOBE](#evaluating-kobe)
 - [Cite](#cite)
 
 ## Prerequisites
