@@ -58,7 +58,7 @@ python -m kobe.data.download
 The downloaded files will be placed at `saved/raw/`:
 
 ```
-18G KOBE/saved
+ 1.6G KOBE/saved
  1.6G ├──raw
   42K │  ├──test.cond
  1.4M │  ├──test.desc
@@ -118,7 +118,7 @@ python -m kobe.data.preprocess \
 You can peek into the `saved/` directories to see what these preprocessing scripts did:
 
 ```
- 18G KOBE/saved
+ 8.2G KOBE/saved
   16G ├──processed
   20M │  ├──test.tar
  1.0G │  ├──train-0.tar
@@ -147,7 +147,7 @@ wandb login
 
 ### Training your own KOBE
 
-We provide four training modes here: `baseline`, `kobe-attr`, `kobe-know`, `kobe-full`, corresponding to the models explored in the paper. They can be trained with the following commands:
+We provide four training modes: `baseline`, `kobe-attr`, `kobe-know`, `kobe-full`, corresponding to the models explored in the paper. They can be trained with the following commands:
 
 ```bash
 python -m kobe.train --mode baseline --name baseline
@@ -168,7 +168,13 @@ Evaluation is now super convenient and reproducible with the help of pytorch-lig
 python -m kobe.train --mode baseline --name test-baseline --test --load-file kobe-v2/<wandb-run-id>/checkpoints/<best_epoch-best_step>.ckpt
 ```
 
-The results will be displayed on the WandB dashboard with the link printed out in the terminal. The evaluation metrics we provide include BLEU score, diversity score and [BERTScore](https://arxiv.org/abs/1904.09675). You can also manually view some generated examples and their references under the `examples/` section on WandB.
+The results will be displayed on the WandB dashboard with the link printed out in the terminal. The evaluation metrics we provide include BLEU score (sacreBLEU), diversity score and [BERTScore](https://arxiv.org/abs/1904.09675). You can also manually view some generated examples and their references under the `examples/` section on WandB.
+
+We provide Nucleus sampling (https://arxiv.org/abs/1904.09751) to replace the beam search in the original KOBE paper. To test this great decoding strategy, run:
+
+```
+python -m kobe.train --mode baseline --name test-baseline --test --load-file kobe-v2/<wandb-run-id>/checkpoints/<best_epoch-best_step>.ckpt --decoding-strategy nucleus
+```
 
 ## Cite
 
