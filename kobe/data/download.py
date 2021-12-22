@@ -131,11 +131,11 @@ if __name__ == "__main__":
         os.remove(FNAME)
     else:
         # If Google is blocked, download from Tsinghua Cloud
+        download(CN_URL, ".", FNAME)
         md5 = hashlib.md5(open(FNAME, "rb").read()).hexdigest()
         print(f"Downloaded MD5 = {md5}; Required MD5 = {MD5}")
         if md5 != MD5:
             raise Exception(
                 "MD5 doesn't match; please remove saved.zip and rerun the script."
             )
-        download(CN_URL, ".", FNAME)
         untar(".", FNAME)
