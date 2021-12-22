@@ -47,8 +47,14 @@ Verify that KOBE is correctly installed by `import kobe`.
 
 ### Dataset
 
-- We use the **TaoDescribe** dataset, which contains 2,129,187 product titles and descriptions in Chinese.
+We use the **TaoDescribe** dataset, which contains 2,129,187 product titles and descriptions in Chinese.
 <!-- - (optional) You can download the un-preprocessed dataset from [here](https://www.dropbox.com/sh/nnnq9eobmn6u44v/AAA7s4YkVbslS-6slDIOn4MYa) or [here (for users in China)](https://tianchi.aliyun.com/dataset/dataDetail?dataId=9717). -->
+
+Run the following command to download the dataset:
+
+```bash
+python -m kobe.data.download
+```
 
 <details>
 <summary>
@@ -64,6 +70,66 @@ Meanings of downloaded data files
 
 <!-- - First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
     - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/download_preprocessed_tao.py --cn`. -->
+
+## Preprocessing
+
+Preprocessing is a commonly neglected part in code release. However, we now provide the preprocessing scripts to rebuild the vocabulary and tokenize the texts, just in case that you wish to preprocess the KOBE data yourself or need to run on your own data.
+
+### Build vocabulary
+
+We use BPE to build a vocabulary on the conditions (including attributes and user categories). For texts, we will use existing BertTokenizer from the huggingface transformers library.
+
+```bash
+python -m kobe.data.vocab \
+  --input saved/raw/train.cond \
+  --vocab-file saved/vocab.cond \
+  --vocab-size 31 --algo word
+```
+
+### Tokenization
+
+Then, we tokenize the raw inputs and save the preprocessed samples to `.tar` files.
+
+```bash
+python -m kobe.data.preprocess \
+  --raw-path saved/raw/ \
+  --processed-path saved/processed/ \
+  --split train valid test \
+  --vocab-file bert-base-chinese \
+  --cond-vocab-file saved/vocab.cond.model
+```
+
+You can peek into the `saved/raw/` and `saved/processed/` directories to see what these preprocessing scripts did!
+
+```bash
+ 18G KOBE/saved
+  16G ├──processed
+  20M │  ├──test.tar
+ 1.0G │  ├──train-0.tar
+ 1.0G │  ├──train-1.tar
+ 1.0G │  ├──train-2.tar
+ 1.0G │  ├──train-3.tar
+ 1.0G │  ├──train-4.tar
+ 1.0G │  ├──train-5.tar
+ 1.0G │  ├──train-6.tar
+ 1.0G │  ├──train-7.tar
+ 8.1G │  ├──train.tar
+  38M │  └──valid.tar
+ 1.6G ├──raw
+  42K │  ├──test.cond
+ 1.4M │  ├──test.desc
+ 2.0M │  ├──test.fact
+ 450K │  ├──test.title
+  17M │  ├──train.cond
+ 553M │  ├──train.desc
+ 794M │  ├──train.fact
+ 183M │  ├──train.title
+  80K │  ├──valid.cond
+ 2.6M │  ├──valid.desc
+ 3.7M │  ├──valid.fact
+ 853K │  └──valid.title
+ 238K └──vocab.cond.model
+```
 
 ## Experiments
 
@@ -93,39 +159,6 @@ If you would like to change other hyperparameters, please look at `kobe/utils/op
 ### Testing KOBE
 
 TODO
-
-## Preprocessing
-
-Preprocessing is a commonly neglected part in code release. However, we now provide the preprocessing scripts to rebuild the vocabulary and tokenize the texts, just in case that you wish to preprocess the KOBE data yourself or need to run on your own data.
-
-### Build vocabulary
-
-We use BPE to build a vocabulary on the texts and conditions (including attributes and user categories).
-
-```bash
-python -m kobe.data.vocab \
-  --input data-v2/raw/train.title data-v2/raw/train.desc data-v2/raw/train.fact \
-  --vocab-file data-v2/vocab.text \
-python -m kobe.data.vocab \
-  --input data-v2/raw/train.cond \
-  --vocab-file data-v2/vocab.cond \
-  --vocab-size 31 --algo word
-```
-
-### Preprocessing
-
-Then, we tokenize the inputs with the built vocabulary and save the preprocessed samples to `.tar` files.
-
-```bash
-python -m kobe.data.preprocess \
-  --raw-path data-v2/raw/ \
-  --processed-path data-v2/processed/ \
-  --split train valid test \
-  --vocab-file data-v2/vocab.text.model \
-  --cond-vocab-file data-v2/vocab.cond.model
-```
-
-You can peek into the `data-v2/raw/` and `data-v2/processed/` directories to see what these scripts do!
 
 ## Cite
 

@@ -6,12 +6,13 @@ from kobe.utils import helpers
 def add_options(parser: ArgumentParser):
     # fmt: off
     # Dataset
-    parser.add_argument("--train-data", default="data-v2/processed/train-*.tar", type=str)
-    parser.add_argument("--valid-data", default="data-v2/processed/valid.tar", type=str)
-    parser.add_argument("--test-data", default="data-v2/processed/test.tar", type=str)
-    parser.add_argument("--text-vocab-path", default="data-v2/vocab.text.model", type=str)
-    parser.add_argument("--cond-vocab-path", default="data-v2/vocab.cond.model", type=str)
+    parser.add_argument("--train-data", default="saved/processed/train-*.tar", type=str)
+    parser.add_argument("--valid-data", default="saved/processed/valid.tar", type=str)
+    parser.add_argument("--test-data", default="saved/processed/test.tar", type=str)
+    parser.add_argument("--text-vocab-path", default="bert-base-chinese", type=str, help="BertTokenizer used to preprocess the corpus")
+    parser.add_argument("--cond-vocab-path", default="saved/vocab.cond.model", type=str)
     parser.add_argument("--num-workers", default=8, help="Number of data loaders", type=int)
+    parser.add_argument("--tokenize", default="zh", help="Tokenization method used to compute sacrebleu, diversity, and BERTScore, defaulted to Chinese", type=str)
 
     # Model
     parser.add_argument("--d-model", default=512, type=int)
@@ -35,12 +36,12 @@ def add_options(parser: ArgumentParser):
 
     # Evaluation
     parser.add_argument("--test", action="store_true", help="only do evaluation")
-    parser.add_argument("--load-file", required=False, type=str)
-    parser.add_argument("--beam-size", default=0, type=int)
+    parser.add_argument("--load-file", required=False, type=str, help="path to the checkpoint (.ckpt) for evaluation")
+    parser.add_argument("--decoding-strategy", default="greedy", type=str, choices=["greedy", "nucleus"], help="Whether to use greedy decoding or nucleus sampling (https://arxiv.org/abs/1904.09751)")
 
     # fmt: on
 
 
 def add_args(args: Namespace):
-    args.text_vocab_size = helpers.get_vocab_size(args.text_vocab_path)
+    args.text_vocab_size = helpers.get_bert_vocab_size(args.text_vocab_path)
     args.cond_vocab_size = helpers.get_vocab_size(args.cond_vocab_path)

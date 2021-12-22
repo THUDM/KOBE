@@ -5,9 +5,11 @@ import pytorch_lightning as pl
 import sentencepiece as spm
 import torch
 import torch.nn as nn
-from sacrebleu.metrics import BLEU
+from bert_score import BERTScorer
+from sacrebleu.metrics.bleu import BLEU, _get_tokenizer
 from torch import optim
 from torch.nn.init import xavier_uniform_
+from transformers.models.bert.tokenization_bert import BertTokenizer
 
 import wandb
 from kobe.data.dataset import Batched, DecodedBatch
@@ -42,10 +44,13 @@ class KobeModel(pl.LightningModule):
         self.loss = nn.CrossEntropyLoss(
             reduction="mean", ignore_index=0, label_smoothing=0.1
         )
-        self.bleu = BLEU()
-        self.vocab = spm.SentencePieceProcessor()
-        self.vocab.Load(args.text_vocab_path)
         self._reset_parameters()
+
+        self.decoding_strategy = args.decoding_strategy
+        self.vocab = BertTokenizer.from_pretrained(args.text_vocab_path)
+        self.bleu = BLEU(tokenize=args.tokenize)
+        self.sacre_tokenizer = _get_tokenizer(args.tokenize)()
+        self.bert_scorer = BERTScorer(lang=args.tokenize, rescale_with_baseline=True)
 
     def _reset_parameters(self):
         for p in self.parameters():
@@ -75,8 +80,10 @@ class KobeModel(pl.LightningModule):
         logits = self.decoder.forward(batch, encoded)
         loss, acc = self._tokenwise_loss_acc(logits, batch)
 
-        preds = self.decoder.predict(encoded_batch=encoded, beam_size=0)
-        generated = self.vocab.Decode(preds.T.tolist())
+        preds = self.decoder.predict(
+            encoded_batch=encoded, decoding_strategy=self.decoding_strategy
+        )
+        generated = self.vocab.batch_decode(preds.T.tolist(), skip_special_tokens=True)
 
         return DecodedBatch(
             loss=loss.item(),
@@ -97,21 +104,26 @@ class KobeModel(pl.LightningModule):
         self.log(f"{prefix}/loss", loss)
         self.log(f"{prefix}/acc", acc)
 
-        generated = [" ".join(g) for o in outputs for g in o.generated]
-        references = [" ".join(g) for o in outputs for g in o.descriptions]
+        generated = [g for o in outputs for g in o.generated]
+        references = [r for o in outputs for r in o.descriptions]
 
-        def bleu_with_trunc_length(max_char_len: int):
-            trunc_generated = [
-                " ".join(g[:max_char_len]) for o in outputs for g in o.generated
-            ]
-            return self.bleu.corpus_score(trunc_generated, [references]).score
+        # fmt: off
+        # BLEU score
+        self.log(f"{prefix}/bleu", self.bleu.corpus_score(generated, [references]).score)
 
-        for max_char_len in range(32, 257, 32):
-            self.log(
-                f"{prefix}/bleu_{max_char_len}", bleu_with_trunc_length(max_char_len)
-            )
-        self.log(f"{prefix}/bleu", bleu_with_trunc_length(150))
+        # Diversity score
+        self.log(f"{prefix}/diversity_3", float(helpers.diversity([self.sacre_tokenizer(g) for g in generated], n=3)))
+        self.log(f"{prefix}/diversity_4", float(helpers.diversity([self.sacre_tokenizer(g) for g in generated], n=4)))
+        self.log(f"{prefix}/diversity_5", float(helpers.diversity([self.sacre_tokenizer(g) for g in generated], n=5)))
+        # fmt: on
 
+        # BERTScore
+        p, r, f = self.bert_scorer.score(generated, references)
+        self.log(f"{prefix}/BERTScore_P", p.mean().item())
+        self.log(f"{prefix}/BERTScore_R", r.mean().item())
+        self.log(f"{prefix}/BERTScore_F", f.mean().item())
+
+        # Examples
         columns = ["Generated", "Reference"]
         data = list(zip(generated[:256:16], references[:256:16]))
         table = wandb.Table(data=data, columns=columns)

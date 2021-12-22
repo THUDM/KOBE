@@ -2,14 +2,17 @@ import tempfile
 from argparse import ArgumentParser
 
 import sentencepiece as spm
+from transformers.models.bert.tokenization_bert import BertTokenizer
 
-BOS_TOKEN = "<s>"
-EOS_TOKEN = "</s>"
-UNK_TOKEN = "<unk>"
-PAD_ID = 0
-BOS_ID = 1
-EOS_ID = 2
-UNK_ID = 3
+tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
+
+BOS_TOKEN = tokenizer.cls_token
+EOS_TOKEN = tokenizer.sep_token
+UNK_TOKEN = tokenizer.unk_token
+PAD_ID = tokenizer.pad_token_id
+BOS_ID = tokenizer.cls_token_id
+EOS_ID = tokenizer.sep_token_id
+UNK_ID = tokenizer.unk_token_id
 
 if __name__ == "__main__":
     parser = ArgumentParser()

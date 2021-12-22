@@ -1,10 +1,10 @@
-import argparse
-import datetime
-import importlib
+import hashlib
 import os
 import shutil
 import time
+from urllib.request import urlopen
 
+import gdown
 import requests
 import tqdm
 
@@ -112,15 +112,30 @@ def untar(path, fname, deleteTar=True):
         os.remove(fullpath)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--cn", action="store_true")
-    args = parser.parse_args()
-    if args.cn:
-        url = "https://cloud.tsinghua.edu.cn/f/c6f954892dc8408faf52/?dl=1"
-    else:
-        url = "https://www.dropbox.com/s/43jggpnbvhdez2t/data.tar.gz?dl=1"
-    fname = "data.tar.gz"
+def test_google():
+    try:
+        urlopen("https://www.google.com/", timeout=1)
+        return True
+    except Exception:
+        return False
 
-    download(url, ".", fname)
-    untar(".", fname)
+
+FNAME = "saved.zip"
+MD5 = "9924fb8ac6d32fc797499f226e0e9908"
+CN_URL = "https://cloud.tsinghua.edu.cn/f/06f64ae627ec404db300/?dl=1"
+URL = "https://drive.google.com/uc?id=1NOhv8pvC8IGwt8oRoIZ-A0EojJBZcolr"
+
+if __name__ == "__main__":
+    if test_google():
+        gdown.cached_download(URL, FNAME, md5=MD5, postprocess=gdown.extractall)
+        os.remove(FNAME)
+    else:
+        # If Google is blocked, download from Tsinghua Cloud
+        md5 = hashlib.md5(open(FNAME, "rb").read()).hexdigest()
+        print(f"Downloaded MD5 = {md5}; Required MD5 = {MD5}")
+        if md5 != MD5:
+            raise Exception(
+                "MD5 doesn't match; please remove saved.zip and rerun the script."
+            )
+        download(CN_URL, ".", FNAME)
+        untar(".", FNAME)

@@ -9,6 +9,7 @@ setup(
     python_requires=">=3.8",
     packages=find_packages(exclude=[]),
     install_requires=[
+        "bert-score>=0.3.11",
         "black>=21.10b0",
         "cached_property>=1.5.2",
         "gdown>=4.2.0",
@@ -23,7 +24,7 @@ setup(
         "scipy>=1.7.3",
         "torch>=1.10",
         "tqdm>=4.62.3",
-        "wandb>=0.12.7",
+        "wandb>=0.12.8",
         "webdataset>=0.1.103",
     ],
 )

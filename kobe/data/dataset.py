@@ -204,7 +204,7 @@ class KobeDataModule(pl.LightningDataModule):
         self.max_seq_length = max_seq_length
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.text_vocab_size = helpers.get_vocab_size(vocab_path)
+        self.text_vocab_size = helpers.get_bert_vocab_size(vocab_path)
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
@@ -240,10 +240,10 @@ class KobeDataModule(pl.LightningDataModule):
 
 if __name__ == "__main__":
     dm = KobeDataModule(
-        train_data="data-v2/processed/train-*.tar",
-        valid_data="data-v2/processed/valid.tar",
-        test_data="data-v2/processed/test.tar",
-        vocab_path="data-v2/vocab.text.model",
+        train_data="saved/processed/train-*.tar",
+        valid_data="saved/processed/valid.tar",
+        test_data="saved/processed/test.tar",
+        vocab_path="bert-base-chinese",
         max_seq_length=512,
         batch_size=32,
         num_workers=8,
@@ -255,4 +255,5 @@ if __name__ == "__main__":
     tqdm_iter = tqdm(dm.test_dataloader())
     for batch in tqdm_iter:
         max_len = max(max_len, batch.cond_title_fact_token_ids.shape[0])
+        max_len = max(max_len, batch.description_token_ids.shape[0])
         tqdm_iter.set_description(f"max len = {max_len}")

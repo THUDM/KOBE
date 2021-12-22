@@ -123,8 +123,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-data-v2/
-experiments*/
 .vscode/
 wandb/
 kobe-v2/
+saved/

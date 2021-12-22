@@ -10,6 +10,7 @@ import sentencepiece as spm
 import webdataset as wds
 from joblib import Parallel, delayed
 from tqdm import tqdm
+from transformers.models.bert.tokenization_bert import BertTokenizer
 
 from kobe.data.dataset import Example
 
@@ -27,11 +28,11 @@ FIELDS = ["title", "cond", "desc", "fact"]
 
 def add_options(parser: ArgumentParser):
     # fmt: off
-    parser.add_argument("--raw-path", default="data-v2/raw/")
-    parser.add_argument("--processed-path", default="data-v2/processed/")
+    parser.add_argument("--raw-path", default="saved/raw/")
+    parser.add_argument("--processed-path", default="saved/processed/")
     parser.add_argument("--split", nargs="+", default=["train", "valid", "test"])
-    parser.add_argument("--vocab-file", default="data-v2/vocab.text.model")
-    parser.add_argument("--cond-vocab-file", default="data-v2/vocab.cond.model")
+    parser.add_argument("--vocab-file", default="bert-base-chinese")
+    parser.add_argument("--cond-vocab-file", default="saved/vocab.cond.model")
     # fmt: on
 
 
@@ -44,15 +45,17 @@ def prepare_file(args: Namespace):
 
 def preprocess_raw_example(
     rawe: RawExample,
-    tokenizer: spm.SentencePieceProcessor,
+    tokenizer: BertTokenizer,
     cond_tokenizer: spm.SentencePieceProcessor,
 ) -> Tuple[str, Example]:
 
     e = Example(
-        title_token_ids=tokenizer.EncodeAsIds(rawe.title),
-        description_token_ids=tokenizer.EncodeAsIds(rawe.description),
+        title_token_ids=tokenizer.encode(rawe.title, add_special_tokens=False),
+        description_token_ids=tokenizer.encode(
+            rawe.description, add_special_tokens=False
+        ),
         condition_token_ids=cond_tokenizer.EncodeAsIds(rawe.condition),
-        fact_token_ids=tokenizer.EncodeAsIds(rawe.fact),
+        fact_token_ids=tokenizer.encode(rawe.fact, add_special_tokens=False),
         description=rawe.description,
     )
     return hashlib.sha1(json.dumps(e.__dict__).encode()).hexdigest(), e
@@ -61,7 +64,7 @@ def preprocess_raw_example(
 def preprocess_raw(
     input_prefix: str,
     output: str,
-    text_tokenizer: spm.SentencePieceProcessor,
+    text_tokenizer: BertTokenizer,
     cond_tokenizer: spm.SentencePieceProcessor,
 ):
     contents = {field: open(f"{input_prefix}.{field}").readlines() for field in FIELDS}
@@ -83,11 +86,24 @@ def preprocess_raw(
         for rawe in tqdm(raw_examples)
     )
     np.random.shuffle(examples)
-    # store the processed samples
-    with wds.TarWriter(output) as dst:
-        for key, e in tqdm(examples):
-            sample = {"__key__": key, "json": e.__dict__}
-            dst.write(sample)
+
+    def write_to_tar(fname, examples):
+        # store the processed samples
+        with wds.TarWriter(fname) as dst:
+            for key, e in tqdm(examples):
+                sample = {"__key__": key, "json": e.__dict__}
+                dst.write(sample)
+
+    if len(examples) > 10000:
+        # save to shards for training data
+        shard_size = (len(examples) + 7) // 8
+        for shard_id in range(0, len(examples), shard_size):
+            write_to_tar(
+                f"{output}-{shard_id}.tar",
+                examples[shard_id * shard_size : (shard_id + 1) * shard_size],
+            )
+    else:
+        write_to_tar(f"{output}.tar", examples)
 
 
 if __name__ == "__main__":
@@ -95,16 +111,16 @@ if __name__ == "__main__":
     add_options(parser)
     args = parser.parse_args()
     prepare_file(args)
+    np.random.seed(42)
 
-    text_tokenizer = spm.SentencePieceProcessor()
-    text_tokenizer.Load(args.vocab_file)
+    text_tokenizer = BertTokenizer.from_pretrained(args.vocab_file)
     cond_tokenizer = spm.SentencePieceProcessor()
     cond_tokenizer.Load(args.cond_vocab_file)
 
     for split in args.split:
         preprocess_raw(
             input_prefix=os.path.join(args.raw_path, split),
-            output=os.path.join(args.processed_path, f"{split}.tar"),
+            output=os.path.join(args.processed_path, f"{split}"),
             text_tokenizer=text_tokenizer,
             cond_tokenizer=cond_tokenizer,
         )

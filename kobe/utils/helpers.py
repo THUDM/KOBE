@@ -1,11 +1,17 @@
 import sentencepiece as spm
 import torch
 import torch.nn.functional as F
+from transformers.models.bert.tokenization_bert import BertTokenizer
 
 BASELINE = "baseline"
 KOBE_ATTRIBUTE = "kobe-attr"
 KOBE_KNOWLEDGE = "kobe-know"
 KOBE_FULL = "kobe-full"
+
+
+def get_bert_vocab_size(vocab_path: str) -> int:
+    tokenizer = BertTokenizer.from_pretrained(vocab_path)
+    return tokenizer.vocab_size
 
 
 def get_vocab_size(vocab_path: str) -> int:
@@ -60,3 +66,13 @@ def top_k_top_p_sampling(
     next_token = torch.multinomial(probabilities, 1)
 
     return int(next_token.item())
+
+
+def diversity(tokenized_lines, n=4) -> int:
+    """Defined as the unique number of ngrams generated on the test set."""
+    n_grams_all = []
+    for line in tokenized_lines:
+        n_grams = list(zip(*[line[i:] for i in range(n)]))
+        n_grams_all += n_grams
+
+    return len(set(n_grams_all))

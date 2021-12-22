@@ -170,13 +170,7 @@ class Decoder(nn.Module):
         )
         return self.output(outputs)
 
-    def predict(self, encoded_batch: EncodedBatch, beam_size: int):
-        if beam_size == 0:
-            return self.greedy_decode(encoded_batch)
-        else:
-            raise NotImplementedError
-
-    def greedy_decode(self, encoded_batch: EncodedBatch):
+    def predict(self, encoded_batch: EncodedBatch, decoding_strategy: str):
         batch_size = encoded_batch.context_encodings.shape[1]
         tgt = torch.tensor(
             [BOS_ID] * batch_size, device=encoded_batch.context_encodings.device
@@ -193,8 +187,15 @@ class Decoder(nn.Module):
             )
             logits = self.output(outputs[-1])
 
-            # pred_step = [helpers.top_k_top_p_sampling(logits[i], top_p=0.95) for i in range(batch_size)]
-            pred_step = logits.argmax(dim=1).tolist()
+            if decoding_strategy == "greedy":
+                pred_step = logits.argmax(dim=1).tolist()
+            elif decoding_strategy == "nucleus":
+                pred_step = [
+                    helpers.top_k_top_p_sampling(logits[i], top_p=0.95)
+                    for i in range(batch_size)
+                ]
+            else:
+                raise NotImplementedError
             for b in range(batch_size):
                 if pred_all and pred_all[-1][b].item() in [EOS_ID, PAD_ID]:
                     pred_step[b] = PAD_ID
