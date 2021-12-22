@@ -97,7 +97,7 @@ def preprocess_raw(
     if len(examples) > 10000:
         # save to shards for training data
         shard_size = (len(examples) + 7) // 8
-        for shard_id in range(0, len(examples), shard_size):
+        for shard_id in range(8):
             write_to_tar(
                 f"{output}-{shard_id}.tar",
                 examples[shard_id * shard_size : (shard_id + 1) * shard_size],

@@ -48,12 +48,31 @@ Verify that KOBE is correctly installed by `import kobe`.
 ### Dataset
 
 We use the **TaoDescribe** dataset, which contains 2,129,187 product titles and descriptions in Chinese.
-<!-- - (optional) You can download the un-preprocessed dataset from [here](https://www.dropbox.com/sh/nnnq9eobmn6u44v/AAA7s4YkVbslS-6slDIOn4MYa) or [here (for users in China)](https://tianchi.aliyun.com/dataset/dataDetail?dataId=9717). -->
 
-Run the following command to download the dataset:
+Run the following command to automatically download the dataset:
 
 ```bash
 python -m kobe.data.download
+```
+
+The downloaded files will be placed at `saved/raw/`:
+
+```
+18G KOBE/saved
+ 1.6G ├──raw
+  42K │  ├──test.cond
+ 1.4M │  ├──test.desc
+ 2.0M │  ├──test.fact
+ 450K │  ├──test.title
+  17M │  ├──train.cond
+ 553M │  ├──train.desc
+ 794M │  ├──train.fact
+ 183M │  ├──train.title
+  80K │  ├──valid.cond
+ 2.6M │  ├──valid.desc
+ 3.7M │  ├──valid.fact
+ 853K │  └──valid.title
+...
 ```
 
 <details>
@@ -67,9 +86,6 @@ Meanings of downloaded data files
 <li> train/valid/test.fact: The retrieved knowledge for each product </li>
 </ul>
 </details>
-
-<!-- - First, download the preprocessed TaoDescribe dataset by running `python scripts/download_preprocessed_tao.py`.
-    - If you're in regions where Dropbox are blocked (e.g. Mainland China), try `python scripts/download_preprocessed_tao.py --cn`. -->
 
 ## Preprocessing
 
@@ -88,7 +104,7 @@ python -m kobe.data.vocab \
 
 ### Tokenization
 
-Then, we tokenize the raw inputs and save the preprocessed samples to `.tar` files.
+Then, we will tokenize the raw inputs and save the preprocessed samples to `.tar` files. Note: this process can take a while (about 20 minutes with a 8-core processor).
 
 ```bash
 python -m kobe.data.preprocess \
@@ -99,9 +115,9 @@ python -m kobe.data.preprocess \
   --cond-vocab-file saved/vocab.cond.model
 ```
 
-You can peek into the `saved/raw/` and `saved/processed/` directories to see what these preprocessing scripts did!
+You can peek into the `saved/` directories to see what these preprocessing scripts did:
 
-```bash
+```
  18G KOBE/saved
   16G ├──processed
   20M │  ├──test.tar
@@ -113,21 +129,9 @@ You can peek into the `saved/raw/` and `saved/processed/` directories to see wha
  1.0G │  ├──train-5.tar
  1.0G │  ├──train-6.tar
  1.0G │  ├──train-7.tar
- 8.1G │  ├──train.tar
   38M │  └──valid.tar
  1.6G ├──raw
-  42K │  ├──test.cond
- 1.4M │  ├──test.desc
- 2.0M │  ├──test.fact
- 450K │  ├──test.title
-  17M │  ├──train.cond
- 553M │  ├──train.desc
- 794M │  ├──train.fact
- 183M │  ├──train.title
-  80K │  ├──valid.cond
- 2.6M │  ├──valid.desc
- 3.7M │  ├──valid.fact
- 853K │  └──valid.title
+      │  ├──...
  238K └──vocab.cond.model
 ```
 
@@ -152,13 +156,19 @@ python -m kobe.train --mode kobe-know --name kobe-know
 python -m kobe.train --mode kobe-full --name kobe-full
 ```
 
-After launching any of the experiment above, please go to the WandB link printed out in the terminal to view the training/validation loss, BLEU, and even the generated examples (updated once every epoch) there!
+After launching any of the experiment above, please go to the WandB link printed out in the terminal to view the training progress and evaluation results (updated at every epoch end about once per 2 hours).
 
-If you would like to change other hyperparameters, please look at `kobe/utils/options.py`.
+If you would like to change other hyperparameters, please look at `kobe/utils/options.py`. For example, the default setting train the models for 30 epochs with batch size 64, which is around 1 millison steps. You could add options like `--epochs 100` to train for more epochs and obtain better results. You can also increase `--num-encoder-layers` and `--num-decoder-layers` if better GPUs available.
 
-### Testing KOBE
+### Evaluating KOBE
 
-TODO
+Evaluation is now super convenient and reproducible with the help of pytorch-lightning and WandB. The checkpoint with best bleu score will be saved at `kobe-v2/<wandb-run-id>/checkpoints/<best_epoch-best_step>.ckpt`. To evaluate this model, run the following command:
+
+```bash
+python -m kobe.train --mode baseline --name test-baseline --test --load-file kobe-v2/<wandb-run-id>/checkpoints/<best_epoch-best_step>.ckpt
+```
+
+The results will be displayed on the WandB dashboard with the link printed out in the terminal. The evaluation metrics we provide include BLEU score, diversity score and [BERTScore](https://arxiv.org/abs/1904.09675). You can also manually view some generated examples and their references under the `examples/` section on WandB.
 
 ## Cite
 
