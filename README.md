@@ -23,6 +23,7 @@ Paper accepted at KDD 2019 (Applied Data Science Track). Latest version at [arXi
   - [Visualization with WandB](#visualization-with-wandb)
   - [Training your own KOBE](#training-your-own-kobe)
   - [Evaluating KOBE](#evaluating-kobe)
+  - [Pre-trained Models](#pre-trained-models)
 - [Cite](#cite)
 
 ## Prerequisites
@@ -160,6 +161,14 @@ After launching any of the experiment above, please go to the WandB link printed
 
 If you would like to change other hyperparameters, please look at `kobe/utils/options.py`. For example, the default setting train the models for 30 epochs with batch size 64, which is around 1 millison steps. You could add options like `--epochs 100` to train for more epochs and obtain better results. You can also increase `--num-encoder-layers` and `--num-decoder-layers` if better GPUs available.
 
+**Expected Training Progress**
+
+We provide a reference for the training progress (training takes about 150 hours on a 2080 Ti). The full KOBE model achieves the best BERTScore and diversity, with a slightly lower BLEU score than KOBE-Attr (as shown in the paper).
+
+The resulting training/validation/test curves and examples are shown below:
+
+![Training Progress](docs/_static/images/training.jpg)
+
 ### Evaluating KOBE
 
 Evaluation is now super convenient and reproducible with the help of pytorch-lightning and WandB. The checkpoint with best bleu score will be saved at `kobe-v2/<wandb-run-id>/checkpoints/<best_epoch-best_step>.ckpt`. To evaluate this model, run the following command:
@@ -175,6 +184,10 @@ We provide Nucleus sampling (https://arxiv.org/abs/1904.09751) to replace the be
 ```
 python -m kobe.train --mode baseline --name test-baseline --test --load-file kobe-v2/<wandb-run-id>/checkpoints/<best_epoch-best_step>.ckpt --decoding-strategy nucleus
 ```
+
+### Pre-trained Models
+
+If you wish to obtain the trained KOBE models, please contact us via email or wait for future updates.
 
 ## Cite
 
