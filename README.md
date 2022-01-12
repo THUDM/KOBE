@@ -187,7 +187,7 @@ python -m kobe.train --mode baseline --name test-baseline --test --load-file kob
 
 ### Pre-trained Models
 
-If you wish to obtain the trained KOBE models, please contact us via email or wait for future updates.
+Pre-trained model checkpoints are available at [https://bit.ly/3FiI7Ed](https://bit.ly/3FiI7Ed) (requires network access to Google Drive).
 
 ## Cite
 
