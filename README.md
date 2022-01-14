@@ -187,7 +187,7 @@ python -m kobe.train --mode baseline --name test-baseline --test --load-file kob
 
 ### Pre-trained Models
 
-Pre-trained model checkpoints are available at [https://bit.ly/3FiI7Ed](https://bit.ly/3FiI7Ed) (requires network access to Google Drive).
+Pre-trained model checkpoints are available at [https://bit.ly/3FiI7Ed](https://bit.ly/3FiI7Ed) (requires network access to Google Drive). In addition, download the [vocabulary file](https://drive.google.com/file/d/1ay9mAZnnjX-ZFA9BkN_NSPlWZ2qADlvO/view?usp=sharing) and place under `saved/`
 
 ## Cite
 
