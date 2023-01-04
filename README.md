@@ -1,6 +1,6 @@
 ## [KOBE v2: Towards Knowledge-Based Personalized Product Description Generation in E-commerce](https://arxiv.org/abs/1903.12457)
 
-[![Unittest](https://img.shields.io/github/workflow/status/THUDM/KOBE/Install)](https://github.com/THUDM/KOBE/actions/workflows/install.yml)
+[![Unittest](https://img.shields.io/github/actions/workflow/status/THUDM/KOBE/install.yml?branch=main)](https://github.com/THUDM/KOBE/actions/workflows/install.yml)
 [![GitHub stars](https://img.shields.io/github/stars/THUDM/KOBE)](https://github.com/THUDM/KOBE/stargazers)
 [![GitHub license](https://img.shields.io/github/license/THUDM/KOBE)](https://github.com/THUDM/KOBE/blob/master/LICENSE)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
